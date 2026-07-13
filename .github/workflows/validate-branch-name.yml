@@ -16,7 +16,7 @@ jobs:
         run: |
           BRANCH="${{ github.head_ref }}"
 
-          REGEX="^(feature|bug|hotfix|release|develop)\/[A-Z]+-[0-9]+-[a-z0-9-]+$"
+          REGEX="^(feature|bug|hotfix|release|develop)\/[a-zA-Z0-9._-]+$"
 
           if [[ ! "$BRANCH" =~ $REGEX ]]; then
             echo "❌ Invalid branch name:"

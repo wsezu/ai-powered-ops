@@ -1,0 +1,33 @@
+name: Validate branch name
+
+on:
+  pull_request:
+    types:
+      - opened
+      - synchronize
+      - reopened
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Validate branch name
+        run: |
+          BRANCH="${{ github.head_ref }}"
+
+          REGEX="^(feature|bug|hotfix|release|develop)\/[A-Z]+-[0-9]+-[a-z0-9-]+$"
+
+          if [[ ! "$BRANCH" =~ $REGEX ]]; then
+            echo "❌ Invalid branch name:"
+            echo "$BRANCH"
+            echo ""
+            echo "Valid branch names are: feature, bug, hotfix, release, develop"
+            echo ""
+            echo "Examples:"
+            echo "feature/PROJ-123-login-page"
+            echo "bug/PROJ-456-nullpointer"
+            exit 1
+          fi
+
+          echo "✅ Branch name is valid."

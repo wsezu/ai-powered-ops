@@ -58,6 +58,41 @@ resource bsc 'Microsoft.Storage/storageAccounts/blobServices/containers@2026-04-
   parent: bs
 }]
 
+resource mp 'Microsoft.Storage/storageAccounts/managementPolicies@2026-04-01' = {
+  name: 'default'
+  parent: sa
+  properties: {
+    policy: {
+      rules: [
+        {
+          enabled: true
+          name: 'Delete files that haven\'t been modified in the last three days'
+          definition: {
+            actions: {
+              baseBlob: {
+                delete: {
+                  daysAfterLastAccessTimeGreaterThan: 3
+                }
+              }
+              snapshot: {
+                delete: {
+                  daysAfterCreationGreaterThan: 3
+                }
+              }
+              version: {
+                delete: {
+                  daysAfterCreationGreaterThan: 3
+                }
+              }
+            }
+          }
+          type: 'Lifecycle'
+        }
+      ]
+    }
+  }
+}
+
 resource sf 'Microsoft.Web/serverfarms@2025-03-01' = {
   kind: 'linux'
   location: resourceGroup().location

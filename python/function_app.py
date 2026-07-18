@@ -10,16 +10,17 @@ import os
 import azure.functions as func
 import pandas as pd
 
-group_dimensions = [ "ServiceName", "SubscriptionId" ]
+group_dimensions = ["SubAccountId", "SubAccountName", "ServiceName"]
 normalized_container = "normalized"
-metrics = ["EffectiveCost", "BilledCost" ]
+metrics = ["EffectiveCost", "BilledCost"]
 storage_account_name = os.environ["AzureWebJobsStorage__blobServiceUri"]
 
 dod_pct_threshold = 0.50
 iqr_multiplier = 1.5
 z_score_threshold = 3.0
 
-_credential = DefaultAzureCredential()
+_clientId = os.environ.get("AzureWebJobsStorage__clientId")
+_credential = DefaultAzureCredential(managed_identity_client_id=_clientId) if _clientId else DefaultAzureCredential()
 _blob_service_client = BlobServiceClient(account_url=storage_account_name, credential=_credential)
 
 def _aggregate_daily(df: pd.DataFrame) -> pd.DataFrame:
@@ -108,6 +109,9 @@ def _read_focus_file(blob_name: str, container_name: str) -> pd.DataFrame:
     raise ValueError(f"FOCUS file {blob_name} is missing the following required columns: {missing}")
 
   df["ChargePeriodStart"] = pd.to_datetime(df["ChargePeriodStart"]).dt.date
+  for metric in metrics:
+    df[metric] = df[metric].astype(float)
+
   return df
 
 def _write_output(output: dict) -> None:
@@ -126,16 +130,15 @@ def blob_created_event(event: func.EventGridEvent):
   blob_name = blob_subject.split('/blobs/')[1]
   container_name = blob_subject.split('/containers/')[1].split('/')[0]
 
-  if(blob_name.endswith(".parquet") and container_name == normalized_container):
-    logging.info(f"Processing new FOCUS export {blob_name} in container {container_name}")
+  logging.info(f"Processing new FOCUS export {blob_name} in container {container_name}")
 
-    try:
-      df = _read_focus_file(blob_name=blob_name, container_name=container_name)
-      daily = _aggregate_daily(df=df)
-      signals = _compute_signals(daily=daily)
-      output = _build_output(signals=signals, source_blob=f"{container_name}/{blob_name}")
-      _write_output(output=output)
-      logging.info(f"Normalization complete. {len(output['signals'])} signal groups with {output['anomaly_count']} anomalies.")
-    except Exception as e:
-      logging.error(f"Error processing FOCUS export {container_name}/{blob_name}: {e}")
-      raise
+  try:
+    df = _read_focus_file(blob_name=blob_name, container_name=container_name)
+    daily = _aggregate_daily(df=df)
+    signals = _compute_signals(daily=daily)
+    output = _build_output(signals=signals, source_blob=f"{container_name}/{blob_name}")
+    _write_output(output=output)
+    logging.info(f"Normalization complete. {len(output['signals'])} signal groups with {output['anomaly_count']} anomalies.")
+  except Exception as e:
+    logging.error(f"Error processing FOCUS export {container_name}/{blob_name}: {e}")
+    raise

@@ -14,6 +14,7 @@ The deployment entrypoint is `infra\main.bicep` (subscription scope). It orchest
 2. Azure AI Foundry/Cognitive Services account creation (including model deployments).
 3. Foundry project creation under the Foundry account.
 4. Azure Function App infrastructure (Linux Flex Consumption) with managed identity and storage-backed package deployment.
+5. Event Grid wiring from Storage BlobCreated events (`focus-exports` container) to the Function endpoint.
 
 ### Current default environment
 
@@ -31,7 +32,7 @@ The deployment entrypoint is `infra\main.bicep` (subscription scope). It orchest
 - `infra\main.bicep` - subscription-scope orchestration template
 - `infra\main.bicepparam` - default parameter set/environment manifest
 - `infra\modules\foundry-project.bicep` - Foundry project child resource deployment
-- `infra\modules\function-app.bicep` - Function App + plan + storage + identity + role assignment
+- `infra\modules\function-app.bicep` - Function App + plan + storage + lifecycle policy + identity + role assignment + Event Grid subscription
 - `infra\helpers\types.bicep` - typed parameter contracts used by `main.bicep`
 - `infra\helpers\variables.bicep` - shared region metadata and role definition IDs
 - `.github\workflows\validate-branch-name.yml` - PR branch naming policy
@@ -71,9 +72,10 @@ Region short names and shared role IDs are centralized in `infra\helpers\variabl
 
 PR branch names are validated in CI and must match:
 
-`^(feature|bug|hotfix|release|develop)\/[a-zA-Z0-9._-]+$`
+`^(feature|bug|hotfix|release|develop|iac)\/[a-zA-Z0-9._-]+$`
 
 Examples:
 
 - `feature/PROJ-123-login-page`
 - `bug/PROJ-456-nullpointer`
+- `iac/terraform-state-hardening`

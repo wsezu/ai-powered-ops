@@ -58,6 +58,41 @@ resource bsc 'Microsoft.Storage/storageAccounts/blobServices/containers@2026-04-
   parent: bs
 }]
 
+resource mp 'Microsoft.Storage/storageAccounts/managementPolicies@2026-04-01' = {
+  name: 'default'
+  parent: sa
+  properties: {
+    policy: {
+      rules: [
+        {
+          enabled: true
+          name: 'Delete files that haven\'t been modified in the last three days'
+          definition: {
+            actions: {
+              baseBlob: {
+                delete: {
+                  daysAfterLastAccessTimeGreaterThan: 3
+                }
+              }
+              snapshot: {
+                delete: {
+                  daysAfterCreationGreaterThan: 3
+                }
+              }
+              version: {
+                delete: {
+                  daysAfterCreationGreaterThan: 3
+                }
+              }
+            }
+          }
+          type: 'Lifecycle'
+        }
+      ]
+    }
+  }
+}
+
 resource sf 'Microsoft.Web/serverfarms@2025-03-01' = {
   kind: 'linux'
   location: resourceGroup().location
@@ -128,12 +163,20 @@ resource fa 'Microsoft.Web/sites@2025-03-01' = {
     siteConfig: {
       appSettings: [
         {
-          name: 'AzureWebJobsStorage__blobServiceUri'
-          value: sa.properties.primaryEndpoints.blob
+          name: 'AzureWebJobsStorage__accountName'
+          value: sa.name
+        }
+        {
+          name: 'AzureWebJobsStorage__clientId'
+          value: uami.properties.clientId
         }
         {
           name: 'AzureWebJobsStorage__credential'
           value: 'managedidentity'
+        }
+        {
+          name: 'AzureWebJobsStorage__blobServiceUri'
+          value: sa.properties.primaryEndpoints.blob
         }
         {
           name: 'AzureWebJobsStorage__queueServiceUri'
@@ -149,6 +192,42 @@ resource fa 'Microsoft.Web/sites@2025-03-01' = {
           'https://portal.azure.com'
         ]
       }
+    }
+  }
+}
+
+resource st 'Microsoft.EventGrid/systemTopics@2025-02-15' = {
+  location: resourceGroup().location
+  name: '${sa.name}-evgt-topic'
+  properties: {
+    source: sa.id
+    topicType: 'Microsoft.Storage.StorageAccounts'
+  }
+}
+
+resource es 'Microsoft.EventGrid/systemTopics/eventSubscriptions@2025-02-15' = {
+  name: 'blob-created-subscription'
+  parent: st
+  properties: {
+    destination: {
+      endpointType: 'AzureFunction'
+      properties: {
+        maxEventsPerBatch: 1
+        preferredBatchSizeInKilobytes: 64
+        resourceId: '${fa.id}/functions/BlobCreatedEventGridFunction'
+      }
+    }
+    eventDeliverySchema: 'EventGridSchema'
+    filter: {
+      enableAdvancedFilteringOnArrays: true
+      includedEventTypes: [
+        'Microsoft.Storage.BlobCreated'
+      ]
+      subjectBeginsWith: '/blobServices/default/containers/focus-exports/'
+    }
+    retryPolicy: {
+      eventTimeToLiveInMinutes: 1440
+      maxDeliveryAttempts: 30
     }
   }
 }

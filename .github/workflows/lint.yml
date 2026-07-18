@@ -1,0 +1,51 @@
+name: Lint
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  python-lint:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Ruff
+        run: pip install ruff
+
+      - name: Run Ruff
+        run: |
+          ruff check .
+
+  bicep-lint:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Azure CLI
+        uses: azure/login@v2
+        with:
+          creds: '{}'
+        continue-on-error: true
+
+      - name: Install Bicep
+        run: az bicep install
+
+      - name: Validate Bicep files
+        run: |
+          find . -name "*.bicep" -print0 | while IFS= read -r -d '' file
+          do
+            echo "Checking $file"
+            az bicep build --file "$file"
+          done

@@ -40,10 +40,12 @@ az deployment group validate --resource-group <resource-group-name> --template-f
 
 - `infra\modules\function-app.bicep` provisions the app runtime footprint:
   - Storage account + fixed blob containers (`app-package`, `focus-exports`, `normalized`, `results`).
+  - Storage lifecycle management policy for short-lived blobs/snapshots/versions.
   - Linux Flex Consumption plan (`FC1`).
   - User-assigned managed identity.
   - Role assignment granting blob data owner on the storage account.
   - Linux Function App (`python` `3.12`) configured to deploy package from blob storage through managed identity.
+  - Event Grid system topic + subscription for `Microsoft.Storage.BlobCreated` events on `focus-exports`.
 
 ## Key repository conventions
 
@@ -66,4 +68,4 @@ az deployment group validate --resource-group <resource-group-name> --template-f
   - Storage account hardening defaults enabled (TLS 1.2 minimum, blob public access disabled, shared key access disabled).
 
 - PR branches must match the CI regex in `.github\workflows\validate-branch-name.yml`:
-  - `^(feature|bug|hotfix|release|develop)\/[a-zA-Z0-9._-]+$`
+  - `^(feature|bug|hotfix|release|develop|iac)\/[a-zA-Z0-9._-]+$`

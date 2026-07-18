@@ -2,7 +2,7 @@
 
 ## Build, validate, and deployment commands
 
-This repository is infrastructure-as-code only (Bicep). There is no application test suite or linter config in-repo. Use Azure CLI/Bicep validation commands:
+This repository contains Bicep infrastructure-as-code (`infra\`) and a Python Azure Functions application (`python\`). Use these commands to validate and lint:
 
 ```powershell
 # Validate the full subscription-scope deployment
@@ -20,6 +20,12 @@ az deployment group validate --resource-group <resource-group-name> --template-f
 
 # Validate only the Function App module (resource-group scope)
 az deployment group validate --resource-group <resource-group-name> --template-file infra\modules\function-app.bicep --parameters name=func-aiops-dev-swc-001
+```
+
+Python linting (Ruff — runs in CI on every PR and `main` push):
+
+```powershell
+ruff check python\
 ```
 
 ## High-level architecture
@@ -47,6 +53,8 @@ az deployment group validate --resource-group <resource-group-name> --template-f
   - Linux Function App (`python` `3.12`) configured to deploy package from blob storage through managed identity.
   - Event Grid system topic + subscription for `Microsoft.Storage.BlobCreated` events on `focus-exports`.
 
+- `python\function_app.py` is the Azure Function source. It registers `BlobCreatedEventGridFunction` (Event Grid trigger), reads FOCUS-format Parquet cost exports from the `focus-exports` container, runs cost anomaly detection (z-score, IQR, and day-over-day thresholds) grouped by `SubAccountId`/`SubAccountName`/`ServiceName`, and writes JSON results to the `normalized` container as both `latest.json` and `history/<timestamp>.json`.
+
 ## Key repository conventions
 
 - Naming is pattern-driven and must stay compatible with split/segment logic used in modules. Current pattern is:
@@ -65,7 +73,14 @@ az deployment group validate --resource-group <resource-group-name> --template-f
 - Security defaults are intentional and should be preserved unless explicitly changed:
   - Foundry account local auth disabled.
   - Managed identities used for workload/resource access.
-  - Storage account hardening defaults enabled (TLS 1.2 minimum, blob public access disabled, shared key access disabled).
+  - Storage account hardening defaults enabled (TLS 1.2 minimum, blob public access disabled, shared key access disabled, cross-tenant replication disabled, infrastructure encryption required).
+
+- CI workflows in `.github\workflows\`:
+  - `validate-branch-name.yml` — PR branch name validation (see regex below).
+  - `lint.yml` — Ruff (Python) + `az bicep build` (Bicep) on every PR and `main` push.
+  - `security-scan.yml` — Bandit + pip-audit on every PR and `main` push.
+  - `secret-scan.yml` — Gitleaks on every PR and `main` push.
+  - `codeql.yml` — CodeQL Python analysis on PRs targeting `main` and pushes to `main`.
 
 - PR branches must match the CI regex in `.github\workflows\validate-branch-name.yml`:
   - `^(feature|bug|hotfix|release|develop|iac)\/[a-zA-Z0-9._-]+$`

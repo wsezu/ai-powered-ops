@@ -1,4 +1,18 @@
 @export()
+type applicationInsights = {
+  applicationType: 'web' | 'other'
+  flowType: 'Bluefield' | 'Redfield'
+  ingestionMode: 'ApplicationInsights' | 'ApplicationInsightsWithDiagnosticSettings' | 'LogAnalytics'
+  kind: 'web'
+  location: string
+  name: string
+  resourceGroupName: string
+  retentionInDays: int
+  tags: object?
+  workspaceResourceId: string
+}
+
+@export()
 type foundryAccount = {
   deployments: foundryDeployment[]?
   kind: 'AIServices'

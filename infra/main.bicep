@@ -5,6 +5,7 @@ import * as t from 'helpers/types.bicep'
 param foundryAccounts t.foundryAccount[]
 param foundryProjects t.foundryProject[]
 param functionApps t.functionApp[]
+param logAnalyticsWorkspaces t.logAnalyticsWorkspace[]
 param resourceGroups t.resourceGroup[]
 
 module rgs 'br/public:avm/res/resources/resource-group:0.4.3' = [for rg in resourceGroups: {
@@ -15,6 +16,19 @@ module rgs 'br/public:avm/res/resources/resource-group:0.4.3' = [for rg in resou
     name: rg.name
     tags: rg.?tags
   }
+}]
+
+module laws 'br/public:avm/res/operational-insights/workspace:0.15.1' = [for law in logAnalyticsWorkspaces: {
+  dependsOn: [ rgs ]
+  name: 'deploy_${law.name}'
+  params: {
+    dataRetention: law.dataRetention
+    enableTelemetry: true
+    location: law.location
+    name: law.name
+    skuName: law.skuName
+  }
+  scope: az.resourceGroup(law.resourceGroupName)
 }]
 
 module fas 'br/public:avm/res/cognitive-services/account:0.15.0' = [for fa in foundryAccounts: {

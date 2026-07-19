@@ -25,6 +25,15 @@ type functionApp = {
 }
 
 @export()
+type logAnalyticsWorkspace = {
+  location: string
+  name: string
+  resourceGroupName: string
+  retentionInDays: int
+  sku: 'PerGB2018' | 'Free' | 'CapacityReservation' | 'Standalone'
+}
+
+@export()
 type resourceGroup = {
   location: string
   name: string

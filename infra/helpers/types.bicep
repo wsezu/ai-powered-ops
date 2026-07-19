@@ -31,13 +31,6 @@ type resourceGroup = {
   tags: object?
 }
 
-@export()
-type userAssignedIdentity = {
-  location: string
-  name: string
-  resourceGroupName: string
-}
-
 type foundryDeployment = {
   model: foundryDeploymentModel
   name: string

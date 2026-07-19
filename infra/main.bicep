@@ -6,7 +6,6 @@ param foundryAccounts t.foundryAccount[]
 param foundryProjects t.foundryProject[]
 param functionApps t.functionApp[]
 param resourceGroups t.resourceGroup[]
-// param userAssignedIdentities t.userAssignedIdentity[]
 
 module rgs 'br/public:avm/res/resources/resource-group:0.4.3' = [for rg in resourceGroups: {
   name: 'deploy_${rg.name}'

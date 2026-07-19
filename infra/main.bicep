@@ -2,6 +2,7 @@ targetScope = 'subscription'
 
 import * as t from 'helpers/types.bicep'
 
+param applicationInsights t.applicationInsights[]
 param foundryAccounts t.foundryAccount[]
 param foundryProjects t.foundryProject[]
 param functionApps t.functionApp[]
@@ -29,6 +30,24 @@ module laws 'br/public:avm/res/operational-insights/workspace:0.15.1' = [for law
     skuName: law.skuName
   }
   scope: az.resourceGroup(law.resourceGroupName)
+}]
+
+module appis 'br/public:avm/res/insights/component:0.7.2' = [for ai in applicationInsights: {
+  dependsOn: [ laws, rgs ]
+  name: 'deploy_${ai.name}'
+  params: {
+    applicationType: ai.applicationType
+    enableTelemetry: true
+    flowType: ai.flowType
+    ingestionMode: ai.ingestionMode
+    kind: ai.kind
+    location: ai.location
+    name: ai.name
+    retentionInDays: ai.retentionInDays
+    tags: ai.?tags
+    workspaceResourceId: laws[0].outputs.resourceId
+  }
+  scope: az.resourceGroup(ai.resourceGroupName)
 }]
 
 module fas 'br/public:avm/res/cognitive-services/account:0.15.0' = [for fa in foundryAccounts: {

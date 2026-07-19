@@ -36,6 +36,7 @@ type foundryProject = {
 type functionApp = {
   name: string
   resourceGroupName: string
+  tags: object?
 }
 
 @export()
@@ -45,6 +46,7 @@ type logAnalyticsWorkspace = {
   resourceGroupName: string
   dataRetention: int
   skuName: 'CapacityReservation' | 'Free' | 'LACluster' | 'PerGB2018'
+  tags: object?
 }
 
 @export()
@@ -61,6 +63,7 @@ type foundryDeployment = {
     capacity: int
     name: 'DataZoneStandard' | 'GlobalStandard' | 'Standard'
   }
+  tags: object?
   versionUpgradeOption: 'NoAutoUpgrade' | 'OnceCurrentVersionExpired' | 'OnceNewDefaultVersionAvailable'
 }
 

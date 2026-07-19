@@ -15,6 +15,21 @@ var tags = {
   project: project.name
 }
 
+param applicationInsights = [
+  {
+    applicationType: 'web'
+    flowType: 'Redfield'
+    ingestionMode: 'LogAnalytics'
+    kind: 'web'
+    location: resourceGroups[0].location
+    name: 'appi-${project.shortName}-${project.environment}-${v.regions.swedencentral.shortName}-001'
+    resourceGroupName: resourceGroups[0].name
+    retentionInDays: 90
+    workspaceResourceId: '<harcoded_in_main.bicep>'
+    tags: tags
+  }
+]
+
 param foundryAccounts = [
   {
     deployments: [
@@ -68,6 +83,18 @@ param functionApps = [
   {
     name: 'func-${project.shortName}-${project.environment}-${v.regions.swedencentral.shortName}-001'
     resourceGroupName: resourceGroups[0].name
+    tags: tags
+  }
+]
+
+param logAnalyticsWorkspaces = [
+  {
+    dataRetention: 30
+    location: resourceGroups[0].location
+    name: 'log-${project.shortName}-${project.environment}-${v.regions.swedencentral.shortName}-001'
+    resourceGroupName: resourceGroups[0].name
+    skuName: 'PerGB2018'
+    tags: tags
   }
 ]
 

@@ -2,6 +2,8 @@ targetScope = 'resourceGroup'
 
 import * as v from '../helpers/variables.bicep'
 
+param applicationInsightsConnectionString string
+param applicationInsightsInstrumentationKey string
 param name string
 
 var bscs = [ 'app-package', 'focus-exports', 'normalized', 'results' ]
@@ -127,6 +129,14 @@ resource fa 'Microsoft.Web/sites@2025-03-01' = {
     serverFarmId: sf.id
     siteConfig: {
       appSettings: [
+        {
+          name: 'APPLICATIONINSIGHTS_CONNECTION_STRING'
+          value: applicationInsightsConnectionString
+        }
+        {
+          name: 'APPINSIGHTS_INSTRUMENTATIONKEY'
+          value: applicationInsightsInstrumentationKey
+        }
         {
           name: 'AzureWebJobsStorage__accountName'
           value: sa.name

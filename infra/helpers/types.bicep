@@ -1,4 +1,18 @@
 @export()
+type applicationInsights = {
+  applicationType: 'web' | 'other'
+  flowType: 'Bluefield' | 'Redfield'
+  ingestionMode: 'ApplicationInsights' | 'ApplicationInsightsWithDiagnosticSettings' | 'LogAnalytics'
+  kind: 'web'
+  location: string
+  name: string
+  resourceGroupName: string
+  retentionInDays: 120 | 180 | 270 | 30 | 365 | 550 | 60 | 730 | 90
+  tags: object?
+  workspaceResourceId: string
+}
+
+@export()
 type foundryAccount = {
   deployments: foundryDeployment[]?
   kind: 'AIServices'
@@ -22,6 +36,17 @@ type foundryProject = {
 type functionApp = {
   name: string
   resourceGroupName: string
+  tags: object?
+}
+
+@export()
+type logAnalyticsWorkspace = {
+  location: string
+  name: string
+  resourceGroupName: string
+  dataRetention: int
+  skuName: 'CapacityReservation' | 'Free' | 'LACluster' | 'PerGB2018'
+  tags: object?
 }
 
 @export()
@@ -38,6 +63,7 @@ type foundryDeployment = {
     capacity: int
     name: 'DataZoneStandard' | 'GlobalStandard' | 'Standard'
   }
+  tags: object?
   versionUpgradeOption: 'NoAutoUpgrade' | 'OnceCurrentVersionExpired' | 'OnceNewDefaultVersionAvailable'
 }
 

@@ -2,16 +2,20 @@ from azure.identity import DefaultAzureCredential
 from azure.storage.blob import BlobServiceClient
 from datetime import datetime, timezone
 
+import azure.functions as func
+import pandas as pd
+
 import io
 import json
 import logging
 import os
 
-import azure.functions as func
-import pandas as pd
+from anomaly_detection import compute_persistence, is_latest_flagged, signal_key
 
 group_dimensions = ["SubAccountId", "SubAccountName", "ServiceName"]
 normalized_container = "normalized"
+history_prefix = "history/"
+history_lookback_days = int(os.environ.get("HISTORY_LOOKBACK_DAYS", "14"))
 metrics = ["EffectiveCost", "BilledCost"]
 storage_account_name = os.environ["AzureWebJobsStorage__blobServiceUri"]
 
@@ -71,7 +75,8 @@ def _compute_signals(daily: pd.DataFrame) -> list[dict]:
 
       entry["mean"] = float(mean)
       entry["std_dev"] = float(std)
-      entry["iqr_bounds"] = float(dod_pct.iloc[-1]) if not pd.isna(dod_pct.iloc[-1]) else None
+      entry["iqr_bounds"] = {"lower": float(lower_bound), "upper": float(upper_bound)}
+      entry["latest_day_over_day_pct_change"] = float(dod_pct.iloc[-1]) if not pd.isna(dod_pct.iloc[-1]) else None
 
       for i in range(n):
         value, z = float(series.iloc[i]), float(z_scores.iloc[i])
@@ -91,7 +96,7 @@ def _compute_signals(daily: pd.DataFrame) -> list[dict]:
             "value": value,
             "z_score": round(z, 2),
             "day_over_day_pct_change": round(dod, 4) if dod is not None else None,
-            "triggered_by:": flags
+            "triggered_by": flags
           })
 
       results.append(entry)
@@ -142,3 +147,114 @@ def blob_created_event(event: func.EventGridEvent):
   except Exception as e:
     logging.error(f"Error processing FOCUS export {container_name}/{blob_name}: {e}")
     raise
+
+
+@app.function_name(name="GetLatestCostAnomalies")
+@app.route(route="GetLatestCostAnomalies", methods=["GET"], auth_level=func.AuthLevel.FUNCTION)
+def get_latest_cost_anomalies(req: func.HttpRequest) -> func.HttpResponse:
+  logging.info("GetLatestCostAnomalies trigger received.")
+
+  try:
+    blob_client = _blob_service_client.get_blob_client(blob="latest.json", container=normalized_container)
+
+    if not blob_client.exists():
+      return func.HttpResponse(
+        json.dumps({
+          "status": "no_data",
+          "message": "No result available yet — waiting on the next scheduled export."}),
+        status_code=404,
+        mimetype="application/json",
+      )
+
+    raw = blob_client.download_blob().readall()
+    return func.HttpResponse(raw, status_code=200, mimetype="application/json")
+  except Exception as e:
+    logging.error(f"The following exception occured while getting the latest results: {e}")
+    return func.HttpResponse(
+      json.dumps({
+        "status": "error",
+        "message": str(e)}),
+      status_code=500,
+      mimetype="application/json",
+    )
+
+@app.function_name(name="GetCostAnomalyHistory")
+@app.route(route="GetCostAnomalyHistory", methods=["GET"], auth_level=func.AuthLevel.FUNCTION)
+def get_cost_anomaly_history(req: func.HttpRequest) -> func.HttpResponse:
+  logging.info("GetCostAnomalyHistory trigger received.")
+
+  try:
+    latest_client = _blob_service_client.get_blob_client(blob="latest.json", container=normalized_container)
+
+    if not latest_client.exists():
+      return func.HttpResponse(
+        json.dumps({""
+        "status": "no_data",
+        "message": "No result available yet — waiting on the next scheduled export."
+        }),
+        status_code=404,
+        mimetype="application/json",
+      )
+
+    latest = json.loads(latest_client.download_blob().readall())
+    current_signals = latest.get("signals", [])
+    flagged_signals = [s for s in current_signals if is_latest_flagged(s)]
+
+    if not flagged_signals:
+      return func.HttpResponse(
+        json.dumps({
+          "status": "ok",
+          "checked_snapshots": 0,
+          "anomalies_with_persistence": [],
+          "message": "No anomalies detected in the latest snapshot."
+          }),
+        status_code=200,
+        mimetype="application/json",
+      )
+
+    try:
+      lookback = int(req.params.get("lookback_days", history_lookback_days))
+    except ValueError:
+      lookback = history_lookback_days
+
+    container_client = _blob_service_client.get_container_client(normalized_container)
+    history_blobs = sorted(
+      container_client.list_blobs(name_starts_with=history_prefix),
+      key=lambda b: b.name,
+      reverse=True,
+    )[:lookback]
+
+    history_snapshots = [
+      json.loads(container_client.download_blob(b.name).readall()).get("signals", [])
+      for b in history_blobs
+    ]
+
+    streaks = compute_persistence(current_signals, history_snapshots)
+
+    anomalies_with_persistence = [
+      {
+        "SubAccountId": s.get("SubAccountId"),
+        "SubAccountName": s.get("SubAccountName"),
+        "ServiceName": s.get("ServiceName"),
+        "metric": s.get("metric"),
+        "latest_date": s.get("latest_date"),
+        "latest_value": s.get("latest_value"),
+        "persistence_days": streaks.get(signal_key(s), 1),
+      }
+      for s in flagged_signals
+    ]
+
+    result = {
+      "status": "ok",
+      "checked_snapshots": len(history_snapshots),
+      "anomalies_with_persistence": anomalies_with_persistence,
+    }
+    return func.HttpResponse(json.dumps(result), status_code=200, mimetype="application/json")
+
+  except Exception as e:
+    logging.error(f"Fout bij ophalen van cost anomaly history: {e}")
+    return func.HttpResponse(
+      json.dumps({"status": "error", "message": str(e)}),
+      status_code=500,
+      mimetype="application/json",
+    )

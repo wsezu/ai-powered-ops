@@ -71,6 +71,16 @@ param functionApps = [
   }
 ]
 
+param logAnalyticsWorkspaces = [
+  {
+    dataRetention: 30
+    location: resourceGroups[0].location
+    name: 'log-${project.shortName}-${project.environment}-${v.regions.swedencentral.shortName}-001'
+    resourceGroupName: resourceGroups[0].name
+    skuName: 'PerGB2018'
+  }
+]
+
 param resourceGroups = [
   {
     location: v.regions.swedencentral.location

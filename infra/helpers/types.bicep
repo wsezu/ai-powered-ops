@@ -29,8 +29,8 @@ type logAnalyticsWorkspace = {
   location: string
   name: string
   resourceGroupName: string
-  retentionInDays: int
-  sku: 'PerGB2018' | 'Free' | 'CapacityReservation' | 'Standalone'
+  dataRetention: int
+  skuName: 'CapacityReservation' | 'Free' | 'LACluster' | 'PerGB2018'
 }
 
 @export()

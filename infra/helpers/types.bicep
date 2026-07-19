@@ -7,7 +7,7 @@ type applicationInsights = {
   location: string
   name: string
   resourceGroupName: string
-  retentionInDays: int
+  retentionInDays: 120 | 180 | 270 | 30 | 365 | 550 | 60 | 730 | 90
   tags: object?
   workspaceResourceId: string
 }

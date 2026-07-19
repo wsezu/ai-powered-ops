@@ -88,6 +88,8 @@ module fps 'modules/foundry-project.bicep' = [for fp in foundryProjects: {
 module fus 'modules/function-app.bicep' = [for fu in functionApps: {
   name: 'deploy_function-apps'
   params: {
+    applicationInsightsConnectionString: appis[0].outputs.connectionString
+    applicationInsightsInstrumentationKey: appis[0].outputs.instrumentationKey
     name: fu.name
   }
   scope: az.resourceGroup(fu.resourceGroupName)

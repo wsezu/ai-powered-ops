@@ -28,6 +28,7 @@ module laws 'br/public:avm/res/operational-insights/workspace:0.15.1' = [for law
     location: law.location
     name: law.name
     skuName: law.skuName
+    tags: law.?tags
   }
   scope: az.resourceGroup(law.resourceGroupName)
 }]

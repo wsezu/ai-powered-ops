@@ -83,6 +83,7 @@ param functionApps = [
   {
     name: 'func-${project.shortName}-${project.environment}-${v.regions.swedencentral.shortName}-001'
     resourceGroupName: resourceGroups[0].name
+    tags: tags
   }
 ]
 
@@ -93,6 +94,7 @@ param logAnalyticsWorkspaces = [
     name: 'log-${project.shortName}-${project.environment}-${v.regions.swedencentral.shortName}-001'
     resourceGroupName: resourceGroups[0].name
     skuName: 'PerGB2018'
+    tags: tags
   }
 ]
 

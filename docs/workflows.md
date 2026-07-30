@@ -9,9 +9,9 @@ All CI/CD automation lives in `.github/workflows/`. There are six workflows cove
 | Workflow file | Trigger | Purpose |
 |---|---|---|
 | `validate-branch-name.yml` | PR opened / updated | Enforce branch naming convention |
-| `bicep-lint.yml` | Push / PR on `*.bicep` or `*.bicepparam` | Lint and compile all Bicep files |
+| `bicep-lint.yml` | PR to `main` on `infra/**` | Lint and compile all Bicep files |
 | `deploy-azure-resources.yml` | Push to `main` on `infra/**` | Deploy infrastructure to Azure |
-| `python-lint.yml` | Push / PR on `*.py` | Lint Python with Ruff |
+| `python-lint.yml` | PR to `main` on `*.py` | Lint Python with Ruff |
 | `security-scan.yml` | Push / PR on `*.py` | Security scan Python with Bandit and pip-audit |
 | `secret-scan.yml` | Every push / PR | Scan for hardcoded secrets with Gitleaks |
 
@@ -43,7 +43,7 @@ hotfix/urgent-patch
 ### `bicep-lint.yml` — Bicep lint
 
 **Triggers:**
-- Push or PR when any `*.bicep` or `*.bicepparam` file changes
+- Pull request targeting `main` when any `infra/**/*.bicep` or `infra/**/*.bicepparam` file changes
 - Manual (`workflow_dispatch`)
 
 **Permissions:** `contents: read`, `id-token: write` (for OIDC Azure login)
@@ -59,8 +59,9 @@ hotfix/urgent-patch
 6. **Validate** every `*.bicepparam` file with `az bicep build-params`
 
 **Notes:**
-- All three steps run across the full repository tree (not scoped to `infra/`)
-- Azure login is required because some Bicep templates reference public registry modules (`br/public:...`) that need token resolution
+- Scoped to `infra/**` — changes outside the infra folder do not trigger this workflow
+- Azure login is required because Bicep templates reference public AVM registry modules (`br/public:...`) that need token resolution during compilation
+- Runs on PRs only (not on push); the deployment workflow handles post-merge validation
 
 ---
 
@@ -103,7 +104,7 @@ hotfix/urgent-patch
 ### `python-lint.yml` — Python lint
 
 **Triggers:**
-- Push or PR when any `*.py` file changes
+- Pull request targeting `main` when any `*.py` file changes
 - Manual (`workflow_dispatch`)
 
 **Permissions:** `contents: read`
@@ -171,7 +172,7 @@ hotfix/urgent-patch
 
 ## Azure Authentication (OIDC)
 
-Workflows that access Azure (`bicep-lint`, `deploy-azure-resources`) authenticate using OIDC federated credentials — no static secrets are stored. The managed identity is scoped to the `main` branch; see [docs/bootstrap.md](bootstrap.md) for setup details.
+Workflows that access Azure (`bicep-lint`, `deploy-azure-resources`) authenticate using OIDC federated credentials — no static secrets are stored. The managed identity has two federated credentials: one scoped to the `main` branch (used by the deploy workflow) and one scoped to pull requests (used by the lint workflow). See [docs/bootstrap.md](bootstrap.md) for setup details.
 
 Required repository secrets:
 

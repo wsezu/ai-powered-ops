@@ -87,11 +87,16 @@ Creates a public GitHub repository with:
 - **Purpose:** Azure service principal used by GitHub Actions for authentication
 - **Advantage:** No credentials stored; authentication via OIDC token exchange
 
-#### Federated Credential (GitHub OIDC)
-- **Name:** `branch-main`
-- **Subject:** Constructed from GitHub repository metadata for the `main` branch
-- **Subject format:** `repo:<org>@<org-id>/<repo>@<repo-id>:ref:refs/heads/main`
-- **Purpose:** Links GitHub's OIDC token provider to the Azure managed identity, enabling keyless authentication
+### Federated Credentials (GitHub OIDC)
+
+Bootstrap creates **two** federated credentials on the managed identity:
+
+| Name | Subject | Used by |
+|------|---------|---------|
+| `branch-main` | `repo:<org>@<org-id>/<repo>@<repo-id>:ref:refs/heads/main` | `deploy-azure-resources.yml` (push to main) |
+| `pull-request` | `repo:<org>@<org-id>/<repo>@<repo-id>:pull_request` | `bicep-lint.yml` (PR validation) |
+
+Both are required: the deployment workflow authenticates on push to `main`, and the Bicep lint workflow authenticates on pull requests to resolve public AVM registry modules.
 
 ### 3. GitHub Secrets
 
@@ -128,7 +133,7 @@ Bootstrap configures **OpenID Connect (OIDC)** federated authentication, elimina
 
 - **No credential rotation required** — OIDC tokens are short-lived
 - **Audit trail** — All deployments trace back to GitHub's OIDC token
-- **Scope control** — Only the `main` branch can assume the identity; other branches are denied
+- **Scope control** — Only the `main` branch and pull requests can assume the identity; other contexts are denied
 - **No secrets management overhead** — No periodic credential updates or leakage risk
 
 ## Naming Convention
@@ -212,8 +217,11 @@ If bootstrap cannot be run or fails partway through, you can perform these steps
    az identity create --location <location> --name id-<repo>-prd-<location>-001 --resource-group rg-<repo>-prd-<location>-001 --subscription <subscription-id>
    ```
 
-5. **Create federated credential:**
+5. **Create federated credentials** (two — one for `main` branch, one for pull requests):
    ```bash
+   BRANCH_SUBJECT=$(gh api repos/<org>/<repo> --jq '"repo:\(.owner.login)@\(.owner.id)/\(.name)@\(.id):ref:refs/heads/main"')
+   PR_SUBJECT=$(gh api repos/<org>/<repo> --jq '"repo:\(.owner.login)@\(.owner.id)/\(.name)@\(.id):pull_request"')
+
    az identity federated-credential create \
      --name branch-main \
      --identity-name id-<repo>-prd-<location>-001 \
@@ -221,7 +229,16 @@ If bootstrap cannot be run or fails partway through, you can perform these steps
      --subscription <subscription-id> \
      --audience api://AzureADTokenExchange \
      --issuer https://token.actions.githubusercontent.com \
-     --subject "repo:<org>@<org-id>/<repo>@<repo-id>:ref:refs/heads/main"
+     --subject "$BRANCH_SUBJECT"
+
+   az identity federated-credential create \
+     --name pull-request \
+     --identity-name id-<repo>-prd-<location>-001 \
+     --resource-group rg-<repo>-prd-<location>-001 \
+     --subscription <subscription-id> \
+     --audience api://AzureADTokenExchange \
+     --issuer https://token.actions.githubusercontent.com \
+     --subject "$PR_SUBJECT"
    ```
 
 6. **Retrieve identity details:**

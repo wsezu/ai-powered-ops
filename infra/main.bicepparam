@@ -18,6 +18,16 @@ var tags = {
 
 var resourceSuffix = '${project.shortName}-${project.environment}-${v.regions[project.location].shortName}'
 
+param applicationInsights = [
+  {
+    location: project.location
+    name: 'appi-${resourceSuffix}-001'
+    resourceGroupName: resourceGroups[0].name
+    tags: tags
+  }
+]
+
+
 param logAnalyticsWorkspaces = [
   {
     dataRetention: 30

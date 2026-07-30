@@ -5,6 +5,16 @@ type roleAssignment = {
 }
 
 @export()
+type applicationInsights = {
+  location: string
+  name: string
+  resourceGroupName: string
+  roleAssignments: roleAssignment[]?
+  tags: object?
+  workspaceResourceId: string?
+}
+
+@export()
 type logAnalyticsWorkspace = {
   dataRetention: int?
   location: string?

@@ -9,5 +9,6 @@ type resourceGroup = {
   location: string?
   name: string
   roleAssignments: roleAssignment[]?
+  subscriptionId: string
   tags: object?
 }

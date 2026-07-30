@@ -17,6 +17,7 @@ var tags = {
 }
 
 var resourceSuffix = '${project.shortName}-${project.environment}-${v.regions[project.location].shortName}'
+var storageAccountName = 'stv2${replace(resourceSuffix, '-', '')}001'
 
 param applicationInsights = {
   name: 'appi-${resourceSuffix}-001'
@@ -41,3 +42,20 @@ param resourceGroups = [
     tags: tags
   }
 ]
+
+param storageAccount = {
+  accessTier: 'Hot'
+  kind: 'StorageV2'
+  location: project.location
+  name: (length(storageAccountName) <= 24) ? storageAccountName : take(storageAccountName, 24)
+  resourceGroupName: resourceGroups[0].name
+  skuName: 'Standard_LRS'
+  tags: tags
+}
+
+param userAssignedIdentity = {
+  location: project.location
+  name: 'id-${resourceSuffix}-001'
+  resourceGroupName: resourceGroups[0].name
+  tags: tags
+}

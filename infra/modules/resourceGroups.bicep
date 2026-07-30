@@ -17,7 +17,6 @@ module rgs 'br/public:avm/res/resources/resource-group:0.4.3' = [for resourceGro
 
 output resourceGroups array = [for (resourceGroup, i) in resourceGroups: {
   index: i
-  location: rgs[i].outputs.location
   name: rgs[i].outputs.name
   resourceId: rgs[i].outputs.resourceId
 }]

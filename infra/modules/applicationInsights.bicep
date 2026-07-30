@@ -16,7 +16,7 @@ module appis 'br/public:avm/res/insights/component:0.8.0' = [for applicationInsi
   }
 }]
 
-output applicationInsightNames array = [for (applicationInsight, i) in applicationInsights: {
+output applicationInsights array = [for (applicationInsight, i) in applicationInsights: {
   index: i
   name: appis[i].outputs.name
   resourceId: appis[i].outputs.resourceId

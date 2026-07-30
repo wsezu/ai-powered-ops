@@ -18,7 +18,7 @@ module laws 'br/public:avm/res/operational-insights/workspace:0.16.0' = [for log
   }
 }]
 
-output logAnalyticsWorkspaceNames array = [for (logAnalyticsWorkspace, i) in logAnalyticsWorkspaces: {
+output logAnalyticsWorkspaces array = [for (logAnalyticsWorkspace, i) in logAnalyticsWorkspaces: {
   index: i
   name: laws[i].outputs.name
   resourceId: laws[i].outputs.resourceId

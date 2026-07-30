@@ -1,0 +1,54 @@
+name: Bicep lint
+
+on:
+  pull_request:
+    paths:
+      - '**/*.bicep'
+      - '**/*.bicepparam'
+  push:
+    paths:
+      - '**/*.bicep'
+      - '**/*.bicepparam'
+
+permissions:
+  contents: read
+
+jobs:
+  bicep-lint:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Azure CLI
+        uses: azure/login@v2
+        with:
+          creds: '{}'
+        continue-on-error: true
+
+      - name: Install Bicep
+        run: az bicep install
+
+      - name: Lint Bicep files
+        run: |
+          find . -name "*.bicep" -print0 | while IFS= read -r -d '' file
+          do
+            echo "Linting $file"
+            az bicep lint --file "$file" --diagnostics-format sarif
+          done
+
+      - name: Validate Bicep files
+        run: |
+          find . -name "*.bicep" -print0 | while IFS= read -r -d '' file
+          do
+            echo "Checking $file"
+            az bicep build --file "$file"
+          done
+
+      - name: Validate Bicep parameter files
+        run: |
+          find . -name "*.bicepparam" -print0 | while IFS= read -r -d '' file
+          do
+            echo "Checking $file"
+            az bicep build-params --file "$file"
+          done

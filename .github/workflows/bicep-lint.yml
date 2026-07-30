@@ -2,10 +2,8 @@ name: Bicep lint
 
 on:
   pull_request:
-    paths:
-      - '**/*.bicep'
-      - '**/*.bicepparam'
-  push:
+    branches:
+      - main
     paths:
       - '**/*.bicep'
       - '**/*.bicepparam'

@@ -5,7 +5,7 @@ import * as type from '../helpers/types.bicep'
 param resourceGroups type.resourceGroup[]
 
 module rgs 'br/public:avm/res/resources/resource-group:0.4.3' = [for resourceGroup in resourceGroups: {
-  name: 'rgs-${resourceGroup.name}'
+  name: 'deploy-${resourceGroup.name}'
   params: {
     enableTelemetry: true
     location: resourceGroup.?location

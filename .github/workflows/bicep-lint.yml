@@ -1,12 +1,12 @@
 name: Bicep lint
 
 on:
-  pull_request:
+  push:
     branches:
       - main
     paths:
-      - '**/*.bicep'
-      - '**/*.bicepparam'
+      - infra/**/*.bicep
+      - infra/**/*.bicepparam
   workflow_dispatch: {}
 
 permissions:

@@ -50,14 +50,16 @@ RESOURCE_GROUP="rg-$REPO-prd-$LOCATION-001"
 
 echo "Creating GitHub repository '$ORG/$REPO'..."
 gh repo create "$ORG/$REPO" --add-readme --gitignore VisualStudio --license gpl-3.0 --public > /dev/null
-subject=$(gh api "repos/$ORG/$REPO" --jq '"repo:\(.owner.login)@\(.owner.id)/\(.name)@\(.id):ref:refs/heads/main"')
+branch_subject=$(gh api "repos/$ORG/$REPO" --jq '"repo:\(.owner.login)@\(.owner.id)/\(.name)@\(.id):ref:refs/heads/main"')
+pr_subject=$(gh api "repos/$ORG/$REPO" --jq '"repo:\(.owner.login)@\(.owner.id)/\(.name)@\(.id):pull_request"')
 
 echo "Creating Azure resource group '$RESOURCE_GROUP' in location '$LOCATION'..."
 az group create --location "$LOCATION" --name "$RESOURCE_GROUP" --subscription "$AZURE_SUBSCRIPTION_ID" > /dev/null
 
 echo "Creating Azure user-assigned managed identity '$IDENTITY_NAME' in resource group '$RESOURCE_GROUP'..."
 az identity create --location "$LOCATION" --name "$IDENTITY_NAME" --resource-group "$RESOURCE_GROUP" --subscription "$AZURE_SUBSCRIPTION_ID" > /dev/null
-az identity federated-credential create --name "branch-main" --identity-name "$IDENTITY_NAME" --resource-group "$RESOURCE_GROUP" --subscription "$AZURE_SUBSCRIPTION_ID" --audience 'api://AzureADTokenExchange' --issuer 'https://token.actions.githubusercontent.com' --subject "$subject" > /dev/null
+az identity federated-credential create --name "branch-main" --identity-name "$IDENTITY_NAME" --resource-group "$RESOURCE_GROUP" --subscription "$AZURE_SUBSCRIPTION_ID" --audience 'api://AzureADTokenExchange' --issuer 'https://token.actions.githubusercontent.com' --subject "$branch_subject" > /dev/null
+az identity federated-credential create --name "pull-request" --identity-name "$IDENTITY_NAME" --resource-group "$RESOURCE_GROUP" --subscription "$AZURE_SUBSCRIPTION_ID" --audience 'api://AzureADTokenExchange' --issuer 'https://token.actions.githubusercontent.com' --subject "$pr_subject" > /dev/null
 
 echo "Setting GitHub secrets for Azure credentials..."
 IDENTITY_JSON=$(az identity show --name "$IDENTITY_NAME" --resource-group "$RESOURCE_GROUP" --subscription "$AZURE_SUBSCRIPTION_ID")

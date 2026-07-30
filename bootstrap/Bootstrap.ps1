@@ -29,7 +29,8 @@ Write-Output "Creating GitHub repository..."
 gh repo create "$Org/$Repo" --add-readme --gitignore VisualStudio --license gpl-3.0 --public
 
 Write-Output "Getting OIDC subject..."
-$subject = gh api "repos/$Org/$Repo" --jq '"repo:\(.owner.login)@\(.owner.id)/\(.name)@\(.id):ref:refs/heads/main"'
+$branch_subject = gh api "repos/$Org/$Repo" --jq '"repo:\(.owner.login)@\(.owner.id)/\(.name)@\(.id):ref:refs/heads/main"'
+$pr_subject = gh api "repos/$Org/$Repo" --jq '"repo:\(.owner.login)@\(.owner.id)/\(.name)@\(.id):pull_request"'
 
 Write-Output "Creating resource group..."
 az group create --location $Location --name $resourceGroup --subscription $SubscriptionId | Out-Null
@@ -37,9 +38,18 @@ az group create --location $Location --name $resourceGroup --subscription $Subsc
 Write-Output "Creating managed identity..."
 az identity create --location $Location --name $identityName --resource-group $resourceGroup --subscription $SubscriptionId | Out-Null
 
-Write-Output "Creating federated credential..."
+Write-Output "Creating federated credentials..."
 az identity federated-credential create `
     --name branch-main `
+    --identity-name $identityName `
+    --resource-group $resourceGroup `
+    --subscription $SubscriptionId `
+    --audience api://AzureADTokenExchange `
+    --issuer https://token.actions.githubusercontent.com `
+    --subject $subject | Out-Null
+
+az identity federated-credential create `
+    --name pull-request `
     --identity-name $identityName `
     --resource-group $resourceGroup `
     --subscription $SubscriptionId `

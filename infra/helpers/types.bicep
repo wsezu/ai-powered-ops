@@ -6,7 +6,7 @@ type roleAssignment = {
 
 @export()
 type applicationInsights = {
-  location: string
+  location: string?
   name: string
   resourceGroupName: string
   roleAssignments: roleAssignment[]?
@@ -19,8 +19,6 @@ type logAnalyticsWorkspace = {
   dataRetention: int?
   location: string?
   name: string
-  publicNetworkAccessForIngestion: 'Disabled' | 'Enabled' | 'SecuredByPerimeter'?
-  publicNetworkAccessForQuery: 'Disabled' | 'Enabled' | 'SecuredByPerimeter'?
   roleAssignments: roleAssignment[]?
   resourceGroupName: string
   skuName: 'CapacityReservation' | 'LACluster' | 'PerGB2018'?

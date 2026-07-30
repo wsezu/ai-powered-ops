@@ -18,28 +18,20 @@ var tags = {
 
 var resourceSuffix = '${project.shortName}-${project.environment}-${v.regions[project.location].shortName}'
 
-param applicationInsights = [
-  {
-    location: project.location
-    name: 'appi-${resourceSuffix}-001'
-    resourceGroupName: resourceGroups[0].name
-    tags: tags
-  }
-]
+param applicationInsights = {
+  name: 'appi-${resourceSuffix}-001'
+  resourceGroupName: resourceGroups[0].name
+  tags: tags
+}
 
 
-param logAnalyticsWorkspaces = [
-  {
-    dataRetention: 30
-    location: project.location
-    name: 'log-${resourceSuffix}-001'
-    publicNetworkAccessForIngestion: 'Enabled'
-    publicNetworkAccessForQuery: 'Enabled'
-    resourceGroupName: resourceGroups[0].name
-    skuName: 'PerGB2018'
-    tags: tags
-  }
-]
+param logAnalyticsWorkspace = {
+  dataRetention: 30
+  name: 'log-${resourceSuffix}-001'
+  resourceGroupName: resourceGroups[0].name
+  skuName: 'PerGB2018'
+  tags: tags
+}
 
 param resourceGroups = [
   {

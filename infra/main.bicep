@@ -2,38 +2,27 @@ targetScope = 'subscription'
 
 import * as type from 'helpers/types.bicep'
 
-param applicationInsights type.applicationInsights[]
-param logAnalyticsWorkspaces type.logAnalyticsWorkspace[]
+param applicationInsights type.applicationInsights
+param logAnalyticsWorkspace type.logAnalyticsWorkspace
 param resourceGroups type.resourceGroup[]
 
-module rgs 'modules/resourceGroups.bicep' = [for resourceGroup in resourceGroups: {
-  name: 'deploy-resource-groups'
+module rgs 'br/public:avm/res/resources/resource-group:0.4.3' = [for resourceGroup in resourceGroups: {
+  name: 'deploy-${resourceGroup.name}'
   params: {
-    resourceGroups: resourceGroups
+    enableTelemetry: true
+    location: resourceGroup.?location
+    name: resourceGroup.name
+    tags: resourceGroup.?tags
   }
   scope: az.subscription(resourceGroup.subscriptionId)
 }]
 
-module laws 'modules/logAnalyticsWorkspaces.bicep' = [for logAnalyticsWorkspace in logAnalyticsWorkspaces: {
-  name: 'deploy-log-analytics-workspaces'
+module sr 'modules/supporting_resources.bicep' = {
+  dependsOn: [ rgs ]
+  name: 'deploy-supporting-resources'
   params: {
-    logAnalyticsWorkspaces: logAnalyticsWorkspaces
+    applicationInsights: applicationInsights
+    logAnalticsWorkspace: logAnalyticsWorkspace
   }
-  scope: az.resourceGroup(logAnalyticsWorkspace.resourceGroupName)
-}]
-
-module appis 'modules/applicationInsights.bicep' = [for applicationInsight in applicationInsights: {
-  name: 'deploy-application-insights'
-  params: {
-    applicationInsights: [
-      {
-        location: applicationInsight.location
-        name: applicationInsight.name
-        roleAssignments: applicationInsight.?roleAssignments
-        tags: applicationInsight.?tags
-        workspaceResourceId: laws[0].outputs.logAnalyticsWorkspaces.resourceId
-      }
-    ]
-  }
-  scope: az.resourceGroup(applicationInsight.resourceGroupName)
-}]
+  scope: az.resourceGroup(resourceGroups[0].name)
+}

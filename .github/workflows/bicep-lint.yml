@@ -9,6 +9,7 @@ on:
     paths:
       - '**/*.bicep'
       - '**/*.bicepparam'
+  workflow_dispatch: {}
 
 permissions:
   contents: read

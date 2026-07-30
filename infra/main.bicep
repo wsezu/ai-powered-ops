@@ -5,6 +5,8 @@ import * as type from 'helpers/types.bicep'
 param applicationInsights type.applicationInsights
 param logAnalyticsWorkspace type.logAnalyticsWorkspace
 param resourceGroups type.resourceGroup[]
+param storageAccount type.storageAccount
+param userAssignedIdentity type.userAssignedIdentity
 
 module rgs 'br/public:avm/res/resources/resource-group:0.4.3' = [for resourceGroup in resourceGroups: {
   name: 'deploy-${resourceGroup.name}'
@@ -23,6 +25,8 @@ module sr 'modules/supporting_resources.bicep' = {
   params: {
     applicationInsights: applicationInsights
     logAnalticsWorkspace: logAnalyticsWorkspace
+    storageAccount: storageAccount
+    userAssignedIdentity: userAssignedIdentity
   }
   scope: az.resourceGroup(resourceGroups[0].name)
 }

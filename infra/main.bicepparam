@@ -18,6 +18,21 @@ var tags = {
 
 var resourceSuffix = '${project.shortName}-${project.environment}-${v.regions[project.location].shortName}'
 
+param applicationInsights = {
+  name: 'appi-${resourceSuffix}-001'
+  resourceGroupName: resourceGroups[0].name
+  tags: tags
+}
+
+
+param logAnalyticsWorkspace = {
+  dataRetention: 30
+  name: 'log-${resourceSuffix}-001'
+  resourceGroupName: resourceGroups[0].name
+  skuName: 'PerGB2018'
+  tags: tags
+}
+
 param resourceGroups = [
   {
     location: project.location

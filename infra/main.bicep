@@ -2,12 +2,27 @@ targetScope = 'subscription'
 
 import * as type from 'helpers/types.bicep'
 
+param applicationInsights type.applicationInsights
+param logAnalyticsWorkspace type.logAnalyticsWorkspace
 param resourceGroups type.resourceGroup[]
 
-module rgs 'modules/resourceGroups.bicep' = [for resourceGroup in resourceGroups: {
-  name: 'deploy-resource-groups'
+module rgs 'br/public:avm/res/resources/resource-group:0.4.3' = [for resourceGroup in resourceGroups: {
+  name: 'deploy-${resourceGroup.name}'
   params: {
-    resourceGroups: resourceGroups
+    enableTelemetry: true
+    location: resourceGroup.?location
+    name: resourceGroup.name
+    tags: resourceGroup.?tags
   }
   scope: az.subscription(resourceGroup.subscriptionId)
 }]
+
+module sr 'modules/supporting_resources.bicep' = {
+  dependsOn: [ rgs ]
+  name: 'deploy-supporting-resources'
+  params: {
+    applicationInsights: applicationInsights
+    logAnalticsWorkspace: logAnalyticsWorkspace
+  }
+  scope: az.resourceGroup(resourceGroups[0].name)
+}

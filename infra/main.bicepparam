@@ -63,7 +63,7 @@ param foundryAccount = {
       versionUpgradeOption: 'OnceNewDefaultVersionAvailable'
     }
   ]
-  baseName: 'fa-${resourceSuffix}-001'
+  baseName: 'aiops'
   location: project.location
   tags: tags
 }

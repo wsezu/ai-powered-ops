@@ -21,15 +21,56 @@ var storageAccountName = 'stv2${replace(resourceSuffix, '-', '')}001'
 
 param applicationInsights = {
   name: 'appi-${resourceSuffix}-001'
-  resourceGroupName: resourceGroups[0].name
   tags: tags
 }
 
+param foundryAccount = {
+  aiFoundryConfiguration: {
+    accountName: 'fa-${resourceSuffix}-001'
+    allowProjectManagement: true
+    project: {
+      desc: 'AI powered FinOps and SecOps architecture advisor infrastructure on Azure.'
+      displayName: 'AI powered Ops'
+      name: 'proj-${resourceSuffix}-001'
+    }
+    sku: 'S0'
+  }
+  aiModelDeployments: [
+    {
+      model: {
+        format: 'OpenAI'
+        name: 'gpt-5.1'
+        version: '2025-11-13'
+      }
+      name: 'gpt-5.1'
+      sku: {
+        capacity: 10
+        name: 'DataZoneStandard'
+      }
+      versionUpgradeOption: 'OnceNewDefaultVersionAvailable'
+    }
+    {
+      model: {
+        format: 'OpenAI'
+        name: 'gpt-5-mini'
+        version: '2025-08-07'
+      }
+      name: 'gpt-5-mini'
+      sku: {
+        capacity: 20
+        name: 'DataZoneStandard'
+      }
+      versionUpgradeOption: 'OnceNewDefaultVersionAvailable'
+    }
+  ]
+  baseName: 'fa-${resourceSuffix}-001'
+  location: project.location
+  tags: tags
+}
 
 param logAnalyticsWorkspace = {
   dataRetention: 30
   name: 'log-${resourceSuffix}-001'
-  resourceGroupName: resourceGroups[0].name
   skuName: 'PerGB2018'
   tags: tags
 }
@@ -48,7 +89,6 @@ param storageAccount = {
   kind: 'StorageV2'
   location: project.location
   name: (length(storageAccountName) <= 24) ? storageAccountName : take(storageAccountName, 24)
-  resourceGroupName: resourceGroups[0].name
   skuName: 'Standard_LRS'
   tags: tags
 }
@@ -56,6 +96,5 @@ param storageAccount = {
 param userAssignedIdentity = {
   location: project.location
   name: 'id-${resourceSuffix}-001'
-  resourceGroupName: resourceGroups[0].name
   tags: tags
 }

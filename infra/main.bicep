@@ -3,6 +3,7 @@ targetScope = 'subscription'
 import * as type from 'helpers/types.bicep'
 
 param applicationInsights type.applicationInsights
+param foundryAccount type.foundryAccount
 param logAnalyticsWorkspace type.logAnalyticsWorkspace
 param resourceGroups type.resourceGroup[]
 param storageAccount type.storageAccount
@@ -27,6 +28,15 @@ module sr 'modules/supporting_resources.bicep' = {
     logAnalticsWorkspace: logAnalyticsWorkspace
     storageAccount: storageAccount
     userAssignedIdentity: userAssignedIdentity
+  }
+  scope: az.resourceGroup(resourceGroups[0].name)
+}
+
+module fr 'modules/foundry_resources.bicep' = {
+  dependsOn: [ sr ]
+  name: 'deploy-foundry-resources'
+  params: {
+    foundryAccount: foundryAccount
   }
   scope: az.resourceGroup(resourceGroups[0].name)
 }

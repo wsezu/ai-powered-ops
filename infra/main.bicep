@@ -46,9 +46,10 @@ module far 'modules/function-app_resources.bicep' = {
   name: 'deploy-function-app-resources'
   params: {
     applicationInsightsResourceId: sr.outputs.applicationInsights.resourceId
+    dataStorageAccountResourceId: sr.outputs.storageAccounts[0].resourceId
     functionApp: functionApp
     serverFarm: serverFarm
-    storageAccountResourceId: sr.outputs.storageAccounts[1].resourceId
+    systemStorageAccountResourceId: sr.outputs.storageAccounts[1].resourceId
     userAssignedIdentityResourceId: sr.outputs.userAssignedIdentity.resourceId
     virtualNetworkSubnetResourceId: sr.outputs.virtualNetwork.subnetResourceIds[0]
   }

@@ -42,8 +42,9 @@ module vnet 'br/public:avm/res/network/virtual-network:0.10.0' = {
     name: virtualNetwork.name
     subnets: [
       {
-        defaultOutboundAccess: true
         addressPrefixes: [ '10.107.1.0/24' ]
+        defaultOutboundAccess: true
+        delegation: 'Microsoft.App/environments'
         name: 'FunctionApps'
         networkSecurityGroupResourceId: nsg.outputs.resourceId
         serviceEndpoints: [
@@ -51,14 +52,14 @@ module vnet 'br/public:avm/res/network/virtual-network:0.10.0' = {
         ]
       }
       {
-        defaultOutboundAccess: true
         addressPrefixes: [ '10.107.2.0/24' ]
+        defaultOutboundAccess: true
         name: 'StorageAccounts'
         networkSecurityGroupResourceId: nsg.outputs.resourceId
       }
       {
-        defaultOutboundAccess: true
         addressPrefixes: [ '10.107.77.0/24' ]
+        defaultOutboundAccess: true
         name: 'Main'
         networkSecurityGroupResourceId: nsg.outputs.resourceId
       }

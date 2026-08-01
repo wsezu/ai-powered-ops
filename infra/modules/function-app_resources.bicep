@@ -3,14 +3,19 @@ targetScope = 'resourceGroup'
 import * as type from '../helpers/types.bicep'
 
 param applicationInsightsResourceId string
+param dataStorageAccountResourceId string
 param functionApp type.functionApp
 param serverFarm type.serverFarm
-param storageAccountResourceId string
+param systemStorageAccountResourceId string
 param userAssignedIdentityResourceId string
 param virtualNetworkSubnetResourceId string
 
-resource st 'Microsoft.Storage/storageAccounts@2026-04-01' existing = {
-  name: last(split(storageAccountResourceId, '/'))
+resource data_st 'Microsoft.Storage/storageAccounts@2026-04-01' existing = {
+  name: last(split(dataStorageAccountResourceId, '/'))
+}
+
+resource system_st 'Microsoft.Storage/storageAccounts@2026-04-01' existing = {
+  name: last(split(systemStorageAccountResourceId, '/'))
 }
 
 resource uami 'Microsoft.ManagedIdentity/userAssignedIdentities@2024-11-30' existing = {
@@ -41,12 +46,14 @@ module func 'br/public:avm/res/web/site:0.24.0' = {
         name: 'appsettings'
         properties: {
           AzureWebJobsStorage__credential: 'managedidentity'
-          AzureWebJobsStorage__blobServiceUri: 'https://${st.name}.blob.${az.environment().suffixes.storage}'
-          AzureWebJobsStorage__queueServiceUri: 'https://${st.name}.queue.${az.environment().suffixes.storage}'
-          AzureWebJobsStorage__tableServiceUri: 'https://${st.name}.table.${az.environment().suffixes.storage}'
+          AzureWebJobsStorage__blobServiceUri: 'https://${system_st.name}.blob.${az.environment().suffixes.storage}'
+          AzureWebJobsStorage__queueServiceUri: 'https://${system_st.name}.queue.${az.environment().suffixes.storage}'
+          AzureWebJobsStorage__tableServiceUri: 'https://${system_st.name}.table.${az.environment().suffixes.storage}'
           AzureWebJobsStorage__clientId: uami.properties.clientId
+          DataStorage__blobServiceUri: 'https://${data_st.name}.blob.${az.environment().suffixes.storage}'
+          DataStorage__clientId: uami.properties.clientId
         }
-        storageAccountResourceId: st.id
+        storageAccountResourceId: system_st.id
         storageAccountUseIdentityAuthentication: true
       }
     ]
@@ -59,7 +66,7 @@ module func 'br/public:avm/res/web/site:0.24.0' = {
             userAssignedIdentityResourceId: uami.id
           }
           type: 'blobContainer'
-          value: 'https://${st.name}.blob.${az.environment().suffixes.storage}/app-packages'
+          value: 'https://${system_st.name}.blob.${az.environment().suffixes.storage}/app-packages'
         }
       }
       runtime: {
@@ -81,6 +88,11 @@ module func 'br/public:avm/res/web/site:0.24.0' = {
       ]
     }
     name: functionApp.name
+    outboundVnetRouting: {
+      allTraffic: true
+    }
+    publicNetworkAccess: 'Enabled'
+    serverFarmResourceId: asp.outputs.resourceId
     siteConfig: {
       cors: {
         allowedOrigins: [
@@ -88,8 +100,6 @@ module func 'br/public:avm/res/web/site:0.24.0' = {
         ]
       }
     }
-    publicNetworkAccess: 'Enabled'
-    serverFarmResourceId: asp.outputs.resourceId
     tags: functionApp.?tags
     virtualNetworkSubnetResourceId: virtualNetworkSubnetResourceId
   }

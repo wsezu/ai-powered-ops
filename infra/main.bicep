@@ -4,8 +4,10 @@ import * as type from 'helpers/types.bicep'
 
 param applicationInsights type.applicationInsights
 param foundryAccount type.foundryAccount
+param functionApp type.functionApp
 param logAnalyticsWorkspace type.logAnalyticsWorkspace
 param resourceGroups type.resourceGroup[]
+param serverFarm type.serverFarm
 param storageAccount type.storageAccount
 param userAssignedIdentity type.userAssignedIdentity
 
@@ -28,6 +30,18 @@ module sr 'modules/supporting_resources.bicep' = {
     logAnalticsWorkspace: logAnalyticsWorkspace
     storageAccount: storageAccount
     userAssignedIdentity: userAssignedIdentity
+  }
+  scope: az.resourceGroup(resourceGroups[0].name)
+}
+
+module far 'modules/function-app_resources.bicep' = {
+  name: 'deploy-function-app-resources'
+  params: {
+    applicationInsightsResourceId: sr.outputs.applicationInsights.resourceId
+    functionApp: functionApp
+    serverFarm: serverFarm
+    storageAccountResourceId: sr.outputs.storageAccount.resourceId
+    userAssignedIdentityResourceId: sr.outputs.userAssignedIdentity.resourceId
   }
   scope: az.resourceGroup(resourceGroups[0].name)
 }

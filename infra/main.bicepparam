@@ -24,6 +24,12 @@ param applicationInsights = {
   tags: tags
 }
 
+param functionApp = {
+  kind: 'functionapp,linux'
+  name: 'func-${resourceSuffix}-001'
+  tags: tags
+}
+
 param foundryAccount = {
   aiFoundryConfiguration: {
     accountName: 'fa-${resourceSuffix}-001'
@@ -83,6 +89,11 @@ param resourceGroups = [
     tags: tags
   }
 ]
+
+param serverFarm = {
+  name: 'asp-${resourceSuffix}-001'
+  tags: tags
+}
 
 param storageAccount = {
   accessTier: 'Hot'

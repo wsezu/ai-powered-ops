@@ -46,7 +46,7 @@ az identity federated-credential create `
     --subscription $SubscriptionId `
     --audience api://AzureADTokenExchange `
     --issuer https://token.actions.githubusercontent.com `
-    --subject $subject | Out-Null
+    --subject $branch_subject | Out-Null
 
 az identity federated-credential create `
     --name pull-request `
@@ -55,7 +55,7 @@ az identity federated-credential create `
     --subscription $SubscriptionId `
     --audience api://AzureADTokenExchange `
     --issuer https://token.actions.githubusercontent.com `
-    --subject $subject | Out-Null
+    --subject $pr_subject | Out-Null
 
 Write-Output "Reading identity..."
 $identity = az identity show `

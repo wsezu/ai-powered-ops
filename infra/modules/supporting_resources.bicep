@@ -66,6 +66,10 @@ module st 'br/public:avm/res/storage/storage-account:0.33.0' = {
     location: resourceGroup().location
     minimumTlsVersion: 'TLS1_2'
     name: storageAccount.name
+    networkAcls: {
+      bypass: 'AzureServices, Logging, Metrics'
+      defaultAction: 'Allow'
+    }
     publicNetworkAccess: 'Enabled'
     requireInfrastructureEncryption: true
     roleAssignments: [

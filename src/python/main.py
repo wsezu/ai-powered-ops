@@ -252,7 +252,7 @@ def get_cost_anomaly_history(req: func.HttpRequest) -> func.HttpResponse:
     return func.HttpResponse(json.dumps(result), status_code=200, mimetype="application/json")
 
   except Exception as e:
-    logging.error(f"Fout bij ophalen van cost anomaly history: {e}")
+    logging.error(f"The following error occured while fetching the cost anomaly history: {e}")
     return func.HttpResponse(
       json.dumps({"status": "error", "message": str(e)}),
       status_code=500,

@@ -6,10 +6,12 @@ param applicationInsights type.applicationInsights
 param foundryAccount type.foundryAccount
 param functionApp type.functionApp
 param logAnalyticsWorkspace type.logAnalyticsWorkspace
+param networkSecurityGroup type.networkSecurityGroup
 param resourceGroups type.resourceGroup[]
 param serverFarm type.serverFarm
-param storageAccount type.storageAccount
+param storageAccounts type.storageAccount[]
 param userAssignedIdentity type.userAssignedIdentity
+param virtualNetwork type.virtualNetwork
 
 module rgs 'br/public:avm/res/resources/resource-group:0.4.3' = [for resourceGroup in resourceGroups: {
   name: 'deploy-${resourceGroup.name}'
@@ -28,8 +30,10 @@ module sr 'modules/supporting_resources.bicep' = {
   params: {
     applicationInsights: applicationInsights
     logAnalticsWorkspace: logAnalyticsWorkspace
-    storageAccount: storageAccount
+    networkSecurityGroup: networkSecurityGroup
+    storageAccounts: storageAccounts
     userAssignedIdentity: userAssignedIdentity
+    virtualNetwork: virtualNetwork
   }
   scope: az.resourceGroup(resourceGroups[0].name)
 }
@@ -40,8 +44,9 @@ module far 'modules/function-app_resources.bicep' = {
     applicationInsightsResourceId: sr.outputs.applicationInsights.resourceId
     functionApp: functionApp
     serverFarm: serverFarm
-    storageAccountResourceId: sr.outputs.storageAccount.resourceId
+    storageAccountResourceId: sr.outputs.storageAccounts[1].resourceId
     userAssignedIdentityResourceId: sr.outputs.userAssignedIdentity.resourceId
+    virtualNetworkSubnetResourceId: sr.outputs.virtualNetwork.subnetResourceIds[0]
   }
   scope: az.resourceGroup(resourceGroups[0].name)
 }

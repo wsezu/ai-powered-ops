@@ -7,6 +7,7 @@ param functionApp type.functionApp
 param serverFarm type.serverFarm
 param storageAccountResourceId string
 param userAssignedIdentityResourceId string
+param virtualNetworkSubnetResourceId string
 
 resource st 'Microsoft.Storage/storageAccounts@2026-04-01' existing = {
   name: last(split(storageAccountResourceId, '/'))
@@ -90,6 +91,7 @@ module func 'br/public:avm/res/web/site:0.24.0' = {
     publicNetworkAccess: 'Enabled'
     serverFarmResourceId: asp.outputs.resourceId
     tags: functionApp.?tags
+    virtualNetworkSubnetResourceId: virtualNetworkSubnetResourceId
   }
 }
 

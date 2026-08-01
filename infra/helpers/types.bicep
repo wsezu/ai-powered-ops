@@ -17,7 +17,7 @@ type managedIdentity = {
 type roleAssignment = {
   principalId: string
   principalType: 'Device' | 'ForeignGroup' | 'Group' | 'ServicePrincipal' | 'User'
-  roleDefinitionIdOrName: string
+  roleDefinitionId: string
 }
 
 @export()
@@ -71,6 +71,34 @@ type logAnalyticsWorkspace = {
 }
 
 @export()
+type networkSecurityGroup = {
+  location: string?
+  name: string
+  securityRules: {
+    name: string
+    properties: {
+      access: 'Allow' | 'Deny'
+      destinationAddressPrefixes: string[]?
+      destinationPortRanges: string[]?
+      direction: 'Inbound' | 'Outbound'
+      priority: int
+      protocol: '*' | 'Ah' | 'Esp' | 'Icmp' | 'Tcp' | 'Udp'
+      sourceAddressPrefixes: string[]?
+      sourcePortRanges: string[]?
+    }
+  }[]?
+  tags: object?
+}
+
+@export()
+type networkWatcher = {
+  deploy: bool
+  location: string?
+  name: string
+  tags: object?
+}
+
+@export()
 type resourceGroup = {
   location: string?
   name: string
@@ -89,10 +117,23 @@ type serverFarm = {
 @export()
 type storageAccount = {
   accessTier: 'Cold' | 'Cool' | 'Hot' | 'Premium'?
+  blobServices: {
+    containers: {
+      name: string
+    }[]
+  }?
   kind: 'BlobStorage' | 'BlockBlobStorage' | 'FileStorage' | 'Storage' | 'StorageV2'?
   location: string?
   name: string
-  roleAssignments: roleAssignment[]?
+    roleAssignments: {
+    principalId: string?
+    principalType: 'Device' | 'ForeignGroup' | 'Group' | 'ServicePrincipal' | 'User'?
+    roleDefinitionId: string
+  }[]?
+  networkAcls: {
+    bypass: 'AzureServices, Logging, Metrics' | 'None'
+    defaultAction: 'Allow' | 'Deny'
+  }?
   skuName: 'Premium_LRS' | 'Premium_ZRS' | 'PremiumV2_LRS' | 'PremiumV2_ZRS' | 'Standard_GRS' | 'Standard_GZRS' | 'Standard_LRS' | 'Standard_RAGRS' | 'Standard_RAGZRS' | 'Standard_ZRS' | 'StandardV2_GRS' | 'StandardV2_GZRS' | 'StandardV2_LRS' | 'StandardV2_ZRS'?
   tags: object?
 }
@@ -101,5 +142,21 @@ type storageAccount = {
 type userAssignedIdentity = {
   location: string?
   name: string
+  tags: object?
+}
+
+@export()
+type virtualNetwork = {
+  addressPrefixes: string[]
+  location: string?
+  name: string
+  subnets:{
+    addressPrefixes: string[]?
+    defaultOutboundAccess: bool?
+    name: string
+    networkSecurityGroupResourceId: string?
+    routeTableResourceId: string?
+    serviceEndpoints: string[]?
+  }[]?
   tags: object?
 }

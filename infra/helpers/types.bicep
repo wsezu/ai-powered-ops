@@ -9,6 +9,11 @@ type aiFoundryConfiguration = {
   sku: 'S0'?
 }
 
+type managedIdentity = {
+  systemAssigned: bool?
+  userAssignedResourceIds: string[]?
+}
+
 type roleAssignment = {
   principalId: string
   principalType: 'Device' | 'ForeignGroup' | 'Group' | 'ServicePrincipal' | 'User'
@@ -22,6 +27,16 @@ type applicationInsights = {
   roleAssignments: roleAssignment[]?
   tags: object?
   workspaceResourceId: string?
+}
+
+@export()
+type functionApp = {
+  kind: 'functionapp,linux'
+  location: string?
+  managedIdentities: managedIdentity?
+  name: string
+  serverFarmResourceId: string?
+  tags: object?
 }
 
 @export()
@@ -61,6 +76,13 @@ type resourceGroup = {
   name: string
   roleAssignments: roleAssignment[]?
   subscriptionId: string
+  tags: object?
+}
+
+@export()
+type serverFarm = {
+  location: string?
+  name: string
   tags: object?
 }
 

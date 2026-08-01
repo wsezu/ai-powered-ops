@@ -41,13 +41,26 @@ module id 'br/public:avm/res/managed-identity/user-assigned-identity:0.6.0' = {
   }
 }
 
-module sa 'br/public:avm/res/storage/storage-account:0.33.0' = {
+module st 'br/public:avm/res/storage/storage-account:0.33.0' = {
   name: 'deploy-${storageAccount.name}'
   params: {
     accessTier: storageAccount.?accessTier
     allowBlobPublicAccess: true
     allowCrossTenantReplication: false
     allowSharedKeyAccess: false
+    blobServices: {
+      containers: [
+        {
+          name: 'app-packages'
+        }
+        {
+          name: 'focus-exports'
+        }
+        {
+          name: 'normalized'
+        }
+      ]
+    }
     enableTelemetry: true
     kind: storageAccount.?kind
     location: resourceGroup().location
@@ -79,6 +92,6 @@ module sa 'br/public:avm/res/storage/storage-account:0.33.0' = {
 }
 
 output applicationInsights object = { name: appi.outputs.name,  resourceId: appi.outputs.resourceId }
-output userAssignedIdentity object = { name: id.outputs.name, resourceId: id.outputs.resourceId }
 output logAnalyticsWorkspace object = { name: log.outputs.name, resourceId: log.outputs.resourceId }
-output storageAccount object = { name: sa.outputs.name, resourceId: sa.outputs.resourceId }
+output storageAccount object = { name: st.outputs.name, resourceId: st.outputs.resourceId }
+output userAssignedIdentity object = { name: id.outputs.name, resourceId: id.outputs.resourceId }

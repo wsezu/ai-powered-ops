@@ -65,7 +65,6 @@ module vnet 'br/public:avm/res/network/virtual-network:0.10.0' = {
     ]
     tags: virtualNetwork.?tags
     vnetEncryption: true
-    vnetEncryptionEnforcement: 'DropUnencrypted'
   }
 }
 

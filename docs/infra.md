@@ -8,36 +8,44 @@ The `infra/` folder contains Bicep infrastructure-as-code templates for deployin
 
 ```
 infra/
-├── main.bicep                      # Entry point; orchestrates all deployments
-├── main.bicepparam                 # Environment-specific configuration values
+├── main.bicep
+├── main.bicepparam
 ├── helpers/
-│   ├── types.bicep                 # Shared custom Bicep types
-│   └── variables.bicep             # Shared constants (regions, role definition IDs)
+│   ├── types.bicep
+│   └── variables.bicep
 └── modules/
-    └── supporting_resources.bicep  # Deploys Log Analytics, App Insights, Identity, Storage
+    ├── supporting_resources.bicep
+    ├── function-app_resources.bicep
+    └── foundry_resources.bicep
 ```
 
 ## Entry Point
 
 ### `main.bicep`
 
-- **Scope:** `subscription` — deployed at Azure subscription level
-- **Purpose:** Creates resource groups, then calls `modules/supporting_resources.bicep` for the remaining resources inside the first resource group.
+- **Scope:** `subscription`
+- **Purpose:** Deploys resource groups first, then deploys supporting platform resources, a Linux Function App stack, and AI Foundry resources into the first resource group.
 - **Imports:** `helpers/types.bicep`
 
-**Parameters:**
+**Parameters**
 
 | Parameter | Type | Description |
-|-----------|------|-------------|
-| `applicationInsights` | `applicationInsights` | Application Insights instance configuration |
-| `logAnalyticsWorkspace` | `logAnalyticsWorkspace` | Log Analytics workspace configuration |
-| `resourceGroups` | `resourceGroup[]` | Array of resource group definitions to deploy |
+|---|---|---|
+| `applicationInsights` | `applicationInsights` | Application Insights configuration |
+| `foundryAccount` | `foundryAccount` | AI Foundry account and model deployment configuration |
+| `functionApp` | `functionApp` | Function App configuration |
+| `logAnalyticsWorkspace` | `logAnalyticsWorkspace` | Log Analytics Workspace configuration |
+| `resourceGroups` | `resourceGroup[]` | Resource groups to deploy |
+| `serverFarm` | `serverFarm` | App Service plan configuration |
 | `storageAccount` | `storageAccount` | Storage account configuration |
 | `userAssignedIdentity` | `userAssignedIdentity` | User-assigned managed identity configuration |
 
-**Deployment flow:**
-1. Resource groups are deployed in a loop using `br/public:avm/res/resources/resource-group:0.4.3`, each scoped to its target subscription (`az.subscription(resourceGroup.subscriptionId)`). This allows creating groups across multiple subscriptions in one deployment.
-2. The `supporting_resources` module runs after (`dependsOn: [rgs]`), scoped to `resourceGroups[0]`, and deploys all other resources into that resource group.
+**Deployment flow**
+
+1. Resource groups are deployed with `br/public:avm/res/resources/resource-group:0.4.3`, each scoped to its own subscription via `az.subscription(resourceGroup.subscriptionId)`.
+2. `supporting_resources.bicep` runs in the first resource group and deploys Log Analytics, Application Insights, a user-assigned identity, and a hardened storage account.
+3. `function-app_resources.bicep` runs in the same resource group and deploys the Linux App Service plan and Function App, wiring it to the supporting resources.
+4. `foundry_resources.bicep` runs in the same resource group and deploys the AI Foundry account and model deployments.
 
 ---
 
@@ -45,41 +53,57 @@ infra/
 
 ### `main.bicepparam`
 
-Defines concrete values for all parameters. Uses `helpers/variables.bicep` for consistent region and naming references.
+Defines the concrete values passed to `main.bicep`.
 
-**Local variables:**
+**Project variables**
 
 | Variable | Value | Purpose |
-|----------|-------|---------|
-| `project.description` | `AI Powered FinOps and SecOps` | Applied as `description` tag |
-| `project.environment` | `prd` | Used in resource naming and tags |
+|---|---|---|
+| `project.description` | `AI Powered FinOps and SecOps` | Used in tags |
+| `project.environment` | `prd` | Environment suffix |
 | `project.location` | `swedencentral` | Primary Azure region |
-| `project.name` | `AI powered ops` | Applied as `project` tag |
-| `project.shortName` | `aiops` | Abbreviated name used in all resource names |
+| `project.name` | `AI powered ops` | Used in tags |
+| `project.shortName` | `aiops` | Resource name prefix |
 
-**Resource suffix pattern:** `<shortName>-<environment>-<regionShortName>`
-- Example: `aiops-prd-swc`
+**Naming patterns**
 
-**Storage account naming:** `stv2` + suffix with hyphens removed + `001`, truncated to 24 characters if needed.
-- Example: `stv2aiopsprdswc001`
+| Resource | Pattern | Example |
+|---|---|---|
+| Standard resources | `<type>-<shortName>-<environment>-<regionShortName>-<instance>` | `rg-aiops-prd-swc-001` |
+| Storage account | `stv2<shortName><environment><regionShortName>001` | `stv2aiopsprdswc001` |
+| AI Foundry account | `fa-<shortName>-<environment>-<regionShortName>-<instance>` | `fa-aiops-prd-swc-001` |
+| AI Foundry project | `proj-<shortName>-<environment>-<regionShortName>-<instance>` | `proj-aiops-prd-swc-001` |
+| Function App | `func-<shortName>-<environment>-<regionShortName>-<instance>` | `func-aiops-prd-swc-001` |
+| App Service plan | `asp-<shortName>-<environment>-<regionShortName>-<instance>` | `asp-aiops-prd-swc-001` |
 
-**Tags applied to all resources:**
+**Deployed resources**
+
+| Resource | Name | Notes |
+|---|---|---|
+| Resource group | `rg-aiops-prd-swc-001` | Deployed to subscription `a525b25c-14fc-42cb-a55f-9dedea6bffaa` |
+| Log Analytics Workspace | `log-aiops-prd-swc-001` | 30-day retention, `PerGB2018` SKU |
+| Application Insights | `appi-aiops-prd-swc-001` | Linked to the Log Analytics workspace |
+| User-assigned identity | `id-aiops-prd-swc-001` | Used by the Function App for storage access |
+| Storage account | `stv2aiopsprdswc001` | `StorageV2`, `Standard_LRS`, hot tier |
+| App Service plan | `asp-aiops-prd-swc-001` | Linux, `FC1`, reserved |
+| Function App | `func-aiops-prd-swc-001` | Python 3.12, managed identity auth |
+| AI Foundry account | `fa-aiops-prd-swc-001` | `S0` SKU |
+| AI Foundry project | `proj-aiops-prd-swc-001` | Project description: AI powered FinOps and SecOps architecture advisor infrastructure on Azure |
+
+**AI model deployments**
+
+| Name | Model | Version | SKU | Capacity |
+|---|---|---|---|---|
+| `gpt-5.1` | `gpt-5.1` | `2025-11-13` | `DataZoneStandard` | `10` |
+| `gpt-5-mini` | `gpt-5-mini` | `2025-08-07` | `DataZoneStandard` | `20` |
+
+**Tags**
 
 | Tag | Value |
-|-----|-------|
+|---|---|
 | `description` | `AI Powered FinOps and SecOps` |
 | `environment` | `prd` |
 | `project` | `AI powered ops` |
-
-**Deployed resources:**
-
-| Resource | Name | Notes |
-|----------|------|-------|
-| Resource group | `rg-aiops-prd-swc-001` | Subscription `a525b25c-...`, region `swedencentral` |
-| Log Analytics Workspace | `log-aiops-prd-swc-001` | 30-day retention, `PerGB2018` SKU |
-| Application Insights | `appi-aiops-prd-swc-001` | Linked to Log Analytics workspace |
-| User-Assigned Identity | `id-aiops-prd-swc-001` | Used for storage access |
-| Storage Account | `stv2aiopsprdswc001` | Hot, StorageV2, Standard_LRS |
 
 ---
 
@@ -87,9 +111,9 @@ Defines concrete values for all parameters. Uses `helpers/variables.bicep` for c
 
 ### `helpers/types.bicep`
 
-Defines and exports five custom types. All types support optional `roleAssignments`, `location`, and `tags` fields.
+Shared types used by the Bicep templates.
 
-#### `resourceGroup` (exported)
+#### `resourceGroup`
 
 ```bicep
 type resourceGroup = {
@@ -101,34 +125,32 @@ type resourceGroup = {
 }
 ```
 
-#### `logAnalyticsWorkspace` (exported)
+#### `logAnalyticsWorkspace`
 
 ```bicep
 type logAnalyticsWorkspace = {
   dataRetention: int?
   location: string?
   name: string
-  resourceGroupName: string
   roleAssignments: roleAssignment[]?
   skuName: 'CapacityReservation' | 'LACluster' | 'PerGB2018'?
   tags: object?
 }
 ```
 
-#### `applicationInsights` (exported)
+#### `applicationInsights`
 
 ```bicep
 type applicationInsights = {
   location: string?
   name: string
-  resourceGroupName: string
   roleAssignments: roleAssignment[]?
   tags: object?
   workspaceResourceId: string?
 }
 ```
 
-#### `storageAccount` (exported)
+#### `storageAccount`
 
 ```bicep
 type storageAccount = {
@@ -136,56 +158,98 @@ type storageAccount = {
   kind: 'BlobStorage' | 'BlockBlobStorage' | 'FileStorage' | 'Storage' | 'StorageV2'?
   location: string?
   name: string
-  resourceGroupName: string
   roleAssignments: roleAssignment[]?
-  skuName: 'Premium_LRS' | 'Premium_ZRS' | 'Standard_GRS' | 'Standard_LRS' | 'Standard_ZRS' | ...?
+  skuName: 'Premium_LRS' | 'Premium_ZRS' | 'PremiumV2_LRS' | 'PremiumV2_ZRS' | 'Standard_GRS' | 'Standard_GZRS' | 'Standard_LRS' | 'Standard_RAGRS' | 'Standard_RAGZRS' | 'Standard_ZRS' | 'StandardV2_GRS' | 'StandardV2_GZRS' | 'StandardV2_LRS' | 'StandardV2_ZRS'?
   tags: object?
 }
 ```
 
-#### `userAssignedIdentity` (exported)
+#### `userAssignedIdentity`
 
 ```bicep
 type userAssignedIdentity = {
   location: string?
   name: string
-  resourceGroupName: string
   tags: object?
 }
 ```
 
-#### `roleAssignment` (internal)
+#### `functionApp`
 
 ```bicep
-type roleAssignment = {
-  principalId: string
-  principalType: 'Device' | 'ForeignGroup' | 'Group' | 'ServicePrincipal' | 'User'
-  roleDefinitionIdOrName: string
+type functionApp = {
+  kind: 'functionapp,linux'
+  location: string?
+  managedIdentities: managedIdentity?
+  name: string
+  serverFarmResourceId: string?
+  tags: object?
 }
 ```
+
+#### `serverFarm`
+
+```bicep
+type serverFarm = {
+  location: string?
+  name: string
+  tags: object?
+}
+```
+
+#### `foundryAccount`
+
+```bicep
+type foundryAccount = {
+  aiFoundryConfiguration: aiFoundryConfiguration?
+  aiModelDeployments: {
+    model: {
+      name: string
+      format: string
+      version: string
+    }
+    name: string?
+    sku: {
+      capacity: int?
+      name: string
+    }?
+    versionUpgradeOption: string?
+  }[]?
+  baseName: string
+  location: string?
+  tags: object?
+}
+```
+
+**Foundry configuration**
+
+- Account name: `fa-<shortName>-<environment>-<regionShortName>-<instance>`
+- Project name: `proj-<shortName>-<environment>-<regionShortName>-<instance>`
+- Project display name: `AI powered Ops`
+- Project description: `AI powered FinOps and SecOps architecture advisor infrastructure on Azure.`
+- SKU: `S0`
+- Project management enabled
 
 ---
 
 ### `helpers/variables.bicep`
 
-Exports two constants used across all Bicep files and the parameters file.
+Shared constants used across the templates.
 
-#### `regions` (exported)
+#### `regions`
 
 | Key | `location` | `shortName` |
-|-----|-----------|-------------|
+|---|---|---|
 | `francecentral` | `francecentral` | `frc` |
 | `germanywestcentral` | `germanywestcentral` | `gwc` |
 | `northeurope` | `northeurope` | `neu` |
 | `swedencentral` | `swedencentral` | `swc` |
 | `westeurope` | `westeurope` | `weu` |
 
-Usage: `v.regions.swedencentral.location` → `'swedencentral'`
-
-#### `roleDefinitionId` (exported)
+#### `roleDefinitionId`
 
 | Key | GUID |
-|-----|------|
+|---|---|
 | `CostManagementReaderRoleId` | `72fafb9e-0641-4937-9268-a91bfd8191a3` |
 | `ReaderRoleId` | `acdd72a7-3385-48ef-bd42-f606fba81ae7` |
 | `SecurityReaderRoleId` | `39bc4728-0917-49c7-9d2c-d95423bc2eb4` |
@@ -201,81 +265,81 @@ Usage: `v.regions.swedencentral.location` → `'swedencentral'`
 
 ### `modules/supporting_resources.bicep`
 
-- **Scope:** `resourceGroup` — deploys into the resource group created by `main.bicep`
-- **Purpose:** Deploys Log Analytics Workspace, Application Insights, User-Assigned Managed Identity, and Storage Account as a cohesive set of supporting infrastructure.
-- **Imports:** `helpers/types.bicep`, `helpers/variables.bicep`
+- **Scope:** `resourceGroup`
+- **Purpose:** Deploys Log Analytics Workspace, Application Insights, a user-assigned identity, and a hardened storage account.
+- **AVM modules:** `avm/res/operational-insights/workspace:0.16.0`, `avm/res/insights/component:0.8.0`, `avm/res/managed-identity/user-assigned-identity:0.6.0`, `avm/res/storage/storage-account:0.33.0`
 
-**Parameters:**
+**Storage containers**
 
-| Parameter | Type |
-|-----------|------|
-| `applicationInsights` | `type.applicationInsights` |
-| `logAnalticsWorkspace` | `type.logAnalyticsWorkspace` |
-| `storageAccount` | `type.storageAccount` |
-| `userAssignedIdentity` | `type.userAssignedIdentity` |
+- `app-packages`
+- `focus-exports`
+- `normalized`
 
-**Deployment order and dependencies:**
+**Storage hardening**
 
-```
-log (Log Analytics Workspace)
- └─► appi (Application Insights)  ← workspaceResourceId = log.outputs.resourceId
-id  (User-Assigned Identity)
- └─► sa (Storage Account)         ← role assignments use id.outputs.principalId
-```
+- `allowBlobPublicAccess: true`
+- `allowCrossTenantReplication: false`
+- `allowSharedKeyAccess: false`
+- `minimumTlsVersion: TLS1_2`
+- `publicNetworkAccess: Enabled`
+- `requireInfrastructureEncryption: true`
+- `supportsHttpsTrafficOnly: true`
 
-**AVM modules used:**
+**Role assignments**
 
-| Resource | AVM module | Version |
-|----------|-----------|---------|
-| Log Analytics Workspace | `avm/res/operational-insights/workspace` | `0.16.0` |
-| Application Insights | `avm/res/insights/component` | `0.8.0` |
-| User-Assigned Identity | `avm/res/managed-identity/user-assigned-identity` | `0.6.0` |
-| Storage Account | `avm/res/storage/storage-account` | `0.33.0` |
+- `StorageBlobDataContributor`
+- `StorageQueueDataContributor`
+- `StorageTableDataContributor`
 
-**Storage account security hardening (applied automatically):**
+### `modules/function-app_resources.bicep`
 
-| Setting | Value |
-|---------|-------|
-| `minimumTlsVersion` | `TLS1_2` |
-| `allowSharedKeyAccess` | `false` |
-| `allowCrossTenantReplication` | `false` |
-| `supportsHttpsTrafficOnly` | `true` |
-| `requireInfrastructureEncryption` | `true` |
+- **Scope:** `resourceGroup`
+- **Purpose:** Deploys a Linux App Service plan and Python Function App.
+- **AVM modules:** `avm/res/web/serverfarm:0.7.0`, `avm/res/web/site:0.24.0`
 
-**Storage role assignments (automatically granted to the managed identity):**
+**Inputs**
 
-| Role | Purpose |
-|------|---------|
-| `StorageBlobDataContributor` | Read/write blob data |
-| `StorageQueueDataContributor` | Read/write queue data |
-| `StorageTableDataContributor` | Read/write table data |
+- Existing storage account resource ID
+- Existing user-assigned identity resource ID
+- Application Insights resource ID from `supporting_resources.bicep`
 
-**Outputs:**
+**Function App configuration**
 
-| Output | Type | Contents |
-|--------|------|---------|
-| `applicationInsights` | `object` | `name`, `resourceId` |
-| `logAnalyticsWorkspace` | `object` | `name`, `resourceId` |
-| `storageAccount` | `object` | `name`, `resourceId` |
-| `userAssignedIdentity` | `object` | `name`, `resourceId` |
+- Runtime: Python 3.12
+- `kind: functionapp,linux`
+- Managed identity only for Azure WebJobs storage access
+- App settings point to the storage account using managed identity
+- Deployment package is loaded from the `app-packages` blob container
+- `AzureWebJobsStorage` uses the storage account blob, queue, and table endpoints
+- CORS allows `https://portal.azure.com`
+- `httpsOnly: true`
+
+### `modules/foundry_resources.bicep`
+
+- **Scope:** `resourceGroup`
+- **Purpose:** Deploys the AI Foundry account using the public AVM pattern module.
+- **AVM module:** `br/public:avm/ptn/ai-ml/ai-foundry:0.7.0`
+
+**Model deployments**
+
+- `gpt-5.1`
+- `gpt-5-mini`
 
 ---
 
 ## Conventions
 
-- **Resource naming pattern:** `<type>-<shortName>-<environment>-<regionShortName>-<instance>`, e.g. `rg-aiops-prd-swc-001`
-- **Storage account naming:** Prefix `stv2`, remove hyphens from suffix, append `001`; truncate to 24 characters
-- **Region references:** Always use `v.regions.<key>.location` — never hardcode region strings
-- **Role definition IDs:** Always use `v.roleDefinitionId.<key>` — never hardcode GUIDs
-- **AVM modules:** All resource modules sourced from `br/public:avm/...` with pinned versions
-- **Optional parameters:** Use safe-access operator (`resource.?field`) when passing optional fields to AVM modules
-- **All resources use `resourceGroup().location`** inside modules (not a passed-in location), so location is always inherited from the scope
+- Resource names use the `<type>-<shortName>-<environment>-<regionShortName>-<instance>` pattern unless a service has a stricter rule.
+- Storage accounts use the `stv2<shortName><environment><regionShortName>001` format and are truncated to 24 characters when needed.
+- Region names come from `v.regions.<key>.location`.
+- Role definition GUIDs come from `v.roleDefinitionId.<key>`.
+- Bicep modules use AVM public registry modules with pinned versions.
+- Optional module inputs use safe access (`resource.?field`).
+- All Azure resources are deployed through `resourceGroup().location` within resource-group-scoped modules.
 
 ---
 
 ## Deployment
-
-**Deploy from the parameters file:**
 
 ```bash
 az deployment sub create \
@@ -293,7 +357,7 @@ New-AzSubscriptionDeployment `
   -TemplateParameterFile infra/main.bicepparam
 ```
 
-**Validate without deploying:**
+### Validate without deploying
 
 ```bash
 az bicep build --file infra/main.bicep

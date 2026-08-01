@@ -31,6 +31,10 @@ module sr 'modules/supporting_resources.bicep' = {
     applicationInsights: applicationInsights
     logAnalticsWorkspace: logAnalyticsWorkspace
     networkSecurityGroup: networkSecurityGroup
+    networkWatcher: {
+      deploy: false
+      name: ''
+    }
     storageAccounts: storageAccounts
     userAssignedIdentity: userAssignedIdentity
     virtualNetwork: virtualNetwork

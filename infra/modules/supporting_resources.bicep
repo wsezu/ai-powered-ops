@@ -5,7 +5,7 @@ import * as type from '../helpers/types.bicep'
 param applicationInsights type.applicationInsights
 param logAnalticsWorkspace type.logAnalyticsWorkspace
 param networkSecurityGroup type.networkSecurityGroup
-param networkWatcher type.networkWatcher?
+param networkWatcher type.networkWatcher
 param storageAccounts type.storageAccount[]
 param userAssignedIdentity type.userAssignedIdentity
 param virtualNetwork type.virtualNetwork

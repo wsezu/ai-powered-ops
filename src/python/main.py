@@ -188,9 +188,9 @@ def get_cost_anomaly_history(req: func.HttpRequest) -> func.HttpResponse:
 
     if not latest_client.exists():
       return func.HttpResponse(
-        json.dumps({""
-        "status": "no_data",
-        "message": "No result available yet — waiting on the next scheduled export."
+        json.dumps({
+          "status": "no_data",
+          "message": "No result available yet — waiting on the next scheduled export."
         }),
         status_code=404,
         mimetype="application/json",

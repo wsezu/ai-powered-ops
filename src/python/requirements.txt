@@ -4,4 +4,3 @@ azure-monitor-opentelemetry
 azure-storage-blob
 pandas
 pyarrow
-pyjson

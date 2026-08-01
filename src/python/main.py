@@ -188,9 +188,9 @@ def get_cost_anomaly_history(req: func.HttpRequest) -> func.HttpResponse:
 
     if not latest_client.exists():
       return func.HttpResponse(
-        json.dumps({""
-        "status": "no_data",
-        "message": "No result available yet — waiting on the next scheduled export."
+        json.dumps({
+          "status": "no_data",
+          "message": "No result available yet — waiting on the next scheduled export."
         }),
         status_code=404,
         mimetype="application/json",
@@ -252,7 +252,7 @@ def get_cost_anomaly_history(req: func.HttpRequest) -> func.HttpResponse:
     return func.HttpResponse(json.dumps(result), status_code=200, mimetype="application/json")
 
   except Exception as e:
-    logging.error(f"Fout bij ophalen van cost anomaly history: {e}")
+    logging.error(f"The following error occured while fetching the cost anomaly history: {e}")
     return func.HttpResponse(
       json.dumps({"status": "error", "message": str(e)}),
       status_code=500,

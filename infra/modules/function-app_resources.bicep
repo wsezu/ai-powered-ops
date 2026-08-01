@@ -43,7 +43,7 @@ module func 'br/public:avm/res/web/site:0.24.0' = {
           AzureWebJobsStorage__blobServiceUri: 'https://${st.name}.blob.${az.environment().suffixes.storage}'
           AzureWebJobsStorage__queueServiceUri: 'https://${st.name}.queue.${az.environment().suffixes.storage}'
           AzureWebJobsStorage__tableServiceUri: 'https://${st.name}.table.${az.environment().suffixes.storage}'
-          AzureWebJobsStorage__clientId: uami.id
+          AzureWebJobsStorage__clientId: uami.properties.clientId
         }
         storageAccountResourceId: st.id
         storageAccountUseIdentityAuthentication: true

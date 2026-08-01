@@ -1,12 +1,73 @@
 targetScope = 'resourceGroup'
 
 import * as type from '../helpers/types.bicep'
-import * as variable from '../helpers/variables.bicep'
 
 param applicationInsights type.applicationInsights
 param logAnalticsWorkspace type.logAnalyticsWorkspace
-param storageAccount type.storageAccount
+param networkSecurityGroup type.networkSecurityGroup
+param networkWatcher type.networkWatcher?
+param storageAccounts type.storageAccount[]
 param userAssignedIdentity type.userAssignedIdentity
+param virtualNetwork type.virtualNetwork
+
+module nw 'br/public:avm/res/network/network-watcher:0.5.1' = if(networkWatcher.?deploy!) {
+  name: 'deploy-${networkWatcher.?name!}'
+  params: {
+    enableTelemetry: true
+    location: resourceGroup().location
+    name: networkWatcher.?name!
+    tags: networkWatcher.?tags
+  }
+}
+
+module nsg 'br/public:avm/res/network/network-security-group:0.5.3' = {
+  name: 'deploy-${networkSecurityGroup.name}'
+  params: {
+    enableTelemetry: true
+    location: resourceGroup().location
+    name: networkSecurityGroup.name
+    securityRules: networkSecurityGroup.?securityRules
+    tags: networkSecurityGroup.?tags
+  }
+}
+
+module vnet 'br/public:avm/res/network/virtual-network:0.10.0' = {
+  name: 'deploy-${virtualNetwork.name}'
+  params: {
+    addressPrefixes: [
+      '10.107.0.0/16'
+    ]
+    enableTelemetry: true
+    location: resourceGroup().location
+    name: virtualNetwork.name
+    subnets: [
+      {
+        defaultOutboundAccess: true
+        addressPrefixes: [ '10.107.1.0/24' ]
+        name: 'FunctionApps'
+        networkSecurityGroupResourceId: nsg.outputs.resourceGroupName
+        serviceEndpoints: [
+          'Microsoft.Storage'
+        ]
+      }
+      {
+        defaultOutboundAccess: true
+        addressPrefixes: [ '10.107.2.0/24' ]
+        name: 'StorageAccounts'
+        networkSecurityGroupResourceId: nsg.outputs.resourceGroupName
+      }
+      {
+        defaultOutboundAccess: true
+        addressPrefixes: [ '10.107.77.0/24' ]
+        name: 'Main'
+        networkSecurityGroupResourceId: nsg.outputs.resourceGroupName
+      }
+    ]
+    tags: virtualNetwork.?tags
+    vnetEncryption: true
+    vnetEncryptionEnforcement: 'DropUnencrypted'
+  }
+}
 
 module log 'br/public:avm/res/operational-insights/workspace:0.16.0' = {
   name: 'deploy-${logAnalticsWorkspace.name}'
@@ -41,61 +102,36 @@ module id 'br/public:avm/res/managed-identity/user-assigned-identity:0.6.0' = {
   }
 }
 
-module st 'br/public:avm/res/storage/storage-account:0.33.0' = {
+module st 'br/public:avm/res/storage/storage-account:0.33.0' = [for storageAccount in storageAccounts: {
   name: 'deploy-${storageAccount.name}'
   params: {
     accessTier: storageAccount.?accessTier
-    allowBlobPublicAccess: true
+    allowBlobPublicAccess: false
     allowCrossTenantReplication: false
     allowSharedKeyAccess: false
-    blobServices: {
-      containers: [
-        {
-          name: 'app-packages'
-        }
-        {
-          name: 'focus-exports'
-        }
-        {
-          name: 'normalized'
-        }
-      ]
-    }
+    blobServices: storageAccount.?blobServices
     enableTelemetry: true
     kind: storageAccount.?kind
     location: resourceGroup().location
     minimumTlsVersion: 'TLS1_2'
     name: storageAccount.name
-    networkAcls: {
-      bypass: 'AzureServices, Logging, Metrics'
-      defaultAction: 'Allow'
-    }
+    networkAcls: storageAccount.?networkAcls
     publicNetworkAccess: 'Enabled'
     requireInfrastructureEncryption: true
-    roleAssignments: [
-      {
-        principalId: id.outputs.principalId
-        principalType: 'ServicePrincipal'
-        roleDefinitionIdOrName: variable.roleDefinitionId.StorageBlobDataContributor
-      }
-      {
-        principalId: id.outputs.principalId
-        principalType: 'ServicePrincipal'
-        roleDefinitionIdOrName: variable.roleDefinitionId.StorageQueueDataContributor
-      }
-      {
-        principalId: id.outputs.principalId
-        principalType: 'ServicePrincipal'
-        roleDefinitionIdOrName: variable.roleDefinitionId.StorageTableDataContributor
-      }
-    ]
+    roleAssignments: [for roleAssignment in storageAccount.?roleAssignments!: {
+      principalId: id.outputs.principalId
+      principalType: roleAssignment.?principalType
+      roleDefinitionIdOrName: roleAssignment.roleDefinitionId
+    }]
     skuName: storageAccount.?skuName
     supportsHttpsTrafficOnly: true
     tags: storageAccount.?tags
   }
-}
+}]
 
 output applicationInsights object = { name: appi.outputs.name,  resourceId: appi.outputs.resourceId }
 output logAnalyticsWorkspace object = { name: log.outputs.name, resourceId: log.outputs.resourceId }
-output storageAccount object = { name: st.outputs.name, resourceId: st.outputs.resourceId }
+output networkSecurityGroup object = { name: nsg.outputs.name, resourceId: nsg.outputs.resourceId }
+output storageAccounts array = [for (storageAccount, i) in storageAccounts: { name: st[i].outputs.name, resourceId: st[i].outputs.resourceId }]
 output userAssignedIdentity object = { name: id.outputs.name, resourceId: id.outputs.resourceId }
+output virtualNetwork object = { name: vnet.outputs.name, resourceId: vnet.outputs.resourceId, subnetResourceIds: vnet.outputs.subnetResourceIds }

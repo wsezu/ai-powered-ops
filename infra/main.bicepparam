@@ -1,11 +1,11 @@
 using './main.bicep'
 
-import * as v from 'helpers/variables.bicep'
+import * as variable from 'helpers/variables.bicep'
 
 var project = {
   description: 'AI Powered FinOps and SecOps'
   environment: 'prd'
-  location: v.regions.swedencentral.location
+  location: variable.regions.swedencentral.location
   name: 'AI powered ops'
   shortName: 'aiops'
 }
@@ -16,8 +16,9 @@ var tags = {
   project: project.name
 }
 
-var resourceSuffix = '${project.shortName}-${project.environment}-${v.regions[project.location].shortName}'
-var storageAccountName = 'stv2${replace(resourceSuffix, '-', '')}001'
+var resourceSuffix = '${project.shortName}-${project.environment}-${variable.regions[project.location].shortName}'
+var privateStorageAccountName = 'stv2${replace(resourceSuffix, '-', '')}001'
+var publicStorageAccountName = 'stv2${replace(resourceSuffix, '-', '')}002'
 
 param applicationInsights = {
   name: 'appi-${resourceSuffix}-001'
@@ -81,6 +82,12 @@ param logAnalyticsWorkspace = {
   tags: tags
 }
 
+param networkSecurityGroup = {
+  location: project.location
+  name: 'nsg-${resourceSuffix}-001'
+  tags: tags
+}
+
 param resourceGroups = [
   {
     location: project.location
@@ -95,17 +102,77 @@ param serverFarm = {
   tags: tags
 }
 
-param storageAccount = {
-  accessTier: 'Hot'
-  kind: 'StorageV2'
-  location: project.location
-  name: (length(storageAccountName) <= 24) ? storageAccountName : take(storageAccountName, 24)
-  skuName: 'Standard_LRS'
-  tags: tags
-}
+param storageAccounts = [
+  {
+    accessTier: 'Hot'
+    blobServices: {
+      containers: [
+        {
+          name: 'focus-exports'
+        }
+        {
+          name: 'normalized'
+        }
+      ]
+    }
+    kind: 'StorageV2'
+    location: project.location
+    name: (length(privateStorageAccountName) <= 24) ? privateStorageAccountName : take(privateStorageAccountName, 24)
+    networkAcls: {
+      bypass: 'AzureServices, Logging, Metrics'
+      defaultAction: 'Deny'
+    }
+    roleAssignments: [
+      {
+        roleDefinitionId: variable.roleDefinitionId.StorageBlobDataOwner
+      }
+    ]
+    skuName: 'Standard_LRS'
+    tags: tags
+  }
+  {
+    accessTier: 'Hot'
+    blobServices: {
+      containers: [
+        {
+          name: 'app-packages'
+        }
+      ]
+    }
+    kind: 'StorageV2'
+    location: project.location
+    name: (length(publicStorageAccountName) <= 24) ? publicStorageAccountName : take(publicStorageAccountName, 24)
+    networkAcls: {
+      bypass: 'AzureServices, Logging, Metrics'
+      defaultAction: 'Allow'
+    }
+    roleAssignments: [
+      {
+        roleDefinitionId: variable.roleDefinitionId.StorageBlobDataOwner
+      }
+      {
+        roleDefinitionId: variable.roleDefinitionId.StorageQueueDataContributor
+      }
+      {
+        roleDefinitionId: variable.roleDefinitionId.StorageTableDataContributor
+      }
+    ]
+    skuName: 'Standard_LRS'
+    tags: tags
+  }
+]
 
 param userAssignedIdentity = {
   location: project.location
   name: 'id-${resourceSuffix}-001'
+  tags: tags
+}
+
+param virtualNetwork = {
+  addressPrefixes: [
+    '10.107.0.0/16'
+  ]
+  location: project.location
+  name: 'vnet-${resourceSuffix}-001'
   tags: tags
 }

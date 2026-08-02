@@ -43,6 +43,7 @@ module sr 'modules/supporting_resources.bicep' = {
 }
 
 module far 'modules/function-app_resources.bicep' = {
+  dependsOn: [ rgs ]
   name: 'deploy-function-app-resources'
   params: {
     applicationInsightsResourceId: sr.outputs.applicationInsights.resourceId

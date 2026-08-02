@@ -17,13 +17,13 @@ normalized_container = "normalized"
 history_prefix = "history/"
 history_lookback_days = int(os.environ.get("HISTORY_LOOKBACK_DAYS", "14"))
 metrics = ["EffectiveCost", "BilledCost"]
-storage_account_name = os.environ["AzureWebJobsStorage__blobServiceUri"]
+storage_account_name = os.environ["DataStorage__blobServiceUri"]
 
 dod_pct_threshold = 0.50
 iqr_multiplier = 1.5
 z_score_threshold = 3.0
 
-_clientId = os.environ.get("AzureWebJobsStorage__clientId")
+_clientId = os.environ.get("DataStorage__clientId")
 _credential = DefaultAzureCredential(managed_identity_client_id=_clientId) if _clientId else DefaultAzureCredential()
 _blob_service_client = BlobServiceClient(account_url=storage_account_name, credential=_credential)
 

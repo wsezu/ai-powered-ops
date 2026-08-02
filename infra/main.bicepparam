@@ -121,6 +121,12 @@ param storageAccounts = [
     networkAcls: {
       bypass: 'AzureServices, Logging, Metrics'
       defaultAction: 'Deny'
+      virtualNetworkRules: [
+        {
+          action: 'Allow'
+          id: '/subscriptions/a525b25c-14fc-42cb-a55f-9dedea6bffaa/resourceGroups/${resourceGroups[0].name}/providers/Microsoft.Network/virtualNetworks/${virtualNetwork.name}/subnets/FunctionApps'
+        }
+      ]
     }
     roleAssignments: [
       {

@@ -133,6 +133,14 @@ type storageAccount = {
   networkAcls: {
     bypass: 'AzureServices, Logging, Metrics' | 'None'
     defaultAction: 'Allow' | 'Deny'
+    ipRules: {
+      action: 'Allow' | 'Deny'
+      value: string
+    }[]?
+    virtualNetworkRules: {
+      action: 'Allow' | 'Deny'
+      id: string
+    }[]?
   }?
   skuName: 'Premium_LRS' | 'Premium_ZRS' | 'PremiumV2_LRS' | 'PremiumV2_ZRS' | 'Standard_GRS' | 'Standard_GZRS' | 'Standard_LRS' | 'Standard_RAGRS' | 'Standard_RAGZRS' | 'Standard_ZRS' | 'StandardV2_GRS' | 'StandardV2_GZRS' | 'StandardV2_LRS' | 'StandardV2_ZRS'?
   tags: object?

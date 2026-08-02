@@ -258,3 +258,37 @@ def get_cost_anomaly_history(req: func.HttpRequest) -> func.HttpResponse:
       status_code=500,
       mimetype="application/json",
     )
+
+
+@app.function_name(name="StorageHealthCheck")
+@app.route(route="StorageHealthCheck", methods=["GET"], auth_level=func.AuthLevel.FUNCTION)
+def storage_health_check(req: func.HttpRequest) -> func.HttpResponse:
+  logging.info("StorageHealthCheck trigger received.")
+
+  container_name = req.params.get("container", normalized_container)
+
+  try:
+    container_client = _blob_service_client.get_container_client(container_name)
+    blob_names = [b.name for b in container_client.list_blobs()]
+
+    return func.HttpResponse(
+      json.dumps({
+        "status": "ok",
+        "container": container_name,
+        "blob_count": len(blob_names),
+        "blobs": blob_names[:100],
+      }),
+      status_code=200,
+      mimetype="application/json",
+    )
+  except Exception as e:
+    logging.error(f"Storage health check failed for container '{container_name}': {e}")
+    return func.HttpResponse(
+      json.dumps({
+        "status": "error",
+        "container": container_name,
+        "message": str(e),
+      }),
+      status_code=500,
+      mimetype="application/json",
+    )

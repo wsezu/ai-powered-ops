@@ -19,6 +19,7 @@ var tags = {
 var resourceSuffix = '${project.shortName}-${project.environment}-${variable.regions[project.location].shortName}'
 var privateStorageAccountName = 'stv2${replace(resourceSuffix, '-', '')}001'
 var publicStorageAccountName = 'stv2${replace(resourceSuffix, '-', '')}002'
+var subscriptionId = readEnvironmentVariable('AZURE_SUBSCRIPTION_ID', 'a525b25c-14fc-42cb-a55f-9dedea6bffaa')
 
 param applicationInsights = {
   name: 'appi-${resourceSuffix}-001'
@@ -92,7 +93,7 @@ param resourceGroups = [
   {
     location: project.location
     name: 'rg-${resourceSuffix}-001'
-    subscriptionId: 'a525b25c-14fc-42cb-a55f-9dedea6bffaa'
+    subscriptionId: subscriptionId
     tags: tags
   }
 ]
@@ -124,7 +125,7 @@ param storageAccounts = [
       virtualNetworkRules: [
         {
           action: 'Allow'
-          id: '/subscriptions/a525b25c-14fc-42cb-a55f-9dedea6bffaa/resourceGroups/${resourceGroups[0].name}/providers/Microsoft.Network/virtualNetworks/${virtualNetwork.name}/subnets/FunctionApps'
+          id: '/subscriptions/${subscriptionId}/resourceGroups/${resourceGroups[0].name}/providers/Microsoft.Network/virtualNetworks/${virtualNetwork.name}/subnets/FunctionApps'
         }
       ]
     }

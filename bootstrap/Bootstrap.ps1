@@ -64,16 +64,16 @@ $identity = az identity show `
     --subscription $SubscriptionId |
     ConvertFrom-Json
 
-Write-Output "Creating GitHub secrets..."
-gh secret set AZURE_CLIENT_ID `
+Write-Output "Creating GitHub repository variables..."
+gh variable set AZURE_CLIENT_ID `
     --repo "$Org/$Repo" `
     --body $identity.clientId
 
-gh secret set AZURE_SUBSCRIPTION_ID `
+gh variable set AZURE_SUBSCRIPTION_ID `
     --repo "$Org/$Repo" `
     --body $SubscriptionId
 
-gh secret set AZURE_TENANT_ID `
+gh variable set AZURE_TENANT_ID `
     --repo "$Org/$Repo" `
     --body $identity.tenantId
 

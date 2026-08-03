@@ -17,7 +17,7 @@ Bootstrap is optional, but useful when creating a new repo/subscription setup fr
 4. Two federated credentials on that identity:
    - `branch-main` (`ref:refs/heads/main`)
    - `pull-request` (`pull_request`)
-5. GitHub **secrets**:
+5. GitHub repository **variables**:
    - `AZURE_CLIENT_ID`
    - `AZURE_SUBSCRIPTION_ID`
    - `AZURE_TENANT_ID`
@@ -56,23 +56,6 @@ Bootstrap is optional, but useful when creating a new repo/subscription setup fr
 - `repo:<org>@<org-id>/<repo>@<repo-id>:pull_request`
 
 These are built dynamically from GitHub repository metadata.
-
-## Important workflow alignment note
-
-Bootstrap currently writes Azure values to **GitHub secrets**.
-
-Some workflows in this repo (`deploy-azure-resources.yml`, `deploy-function-app.yml`) currently read Azure values from **GitHub repository variables** (`vars.*`) rather than secrets.
-
-After bootstrap, ensure repository variables are also set:
-
-- `AZURE_CLIENT_ID`
-- `AZURE_TENANT_ID`
-- `AZURE_SUBSCRIPTION_ID`
-
-You can either:
-
-1. set these variables manually in repository settings, or
-2. standardize workflows to use secrets only.
 
 ## Security model
 

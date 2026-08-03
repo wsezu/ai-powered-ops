@@ -27,7 +27,7 @@ CI/CD automation is defined in `.github/workflows/`. There are now **seven** wor
 
 ### `bicep-lint.yml`
 
-- Uses OIDC Azure login with **repository secrets**:
+- Uses OIDC Azure login with **repository variables**:
   - `AZURE_CLIENT_ID`
   - `AZURE_TENANT_ID`
   - `AZURE_SUBSCRIPTION_ID`
@@ -78,18 +78,13 @@ CI/CD automation is defined in `.github/workflows/`. There are now **seven** wor
 
 ## OIDC and GitHub configuration
 
-### Important: mixed credential source in workflows
-
-Current workflows use both:
-
-- **Secrets** (`bicep-lint.yml`)
-- **Repository variables** (`deploy-azure-resources.yml`, `deploy-function-app.yml`)
-
-To keep all Azure workflows functioning, set values in **both places** (or standardize workflows):
+All Azure-authenticating workflows (`bicep-lint.yml`, `deploy-azure-resources.yml`, `deploy-function-app.yml`) read from the same **repository variables**:
 
 - `AZURE_CLIENT_ID`
 - `AZURE_TENANT_ID`
 - `AZURE_SUBSCRIPTION_ID`
+
+None of these three values are sensitive under OIDC — the actual trust boundary is the federated credential's `subject` claim, not the secrecy of a client ID, tenant ID, or subscription ID.
 
 The OIDC identity must have federated credentials for:
 

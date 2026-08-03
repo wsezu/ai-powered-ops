@@ -61,11 +61,11 @@ az identity create --location "$LOCATION" --name "$IDENTITY_NAME" --resource-gro
 az identity federated-credential create --name "branch-main" --identity-name "$IDENTITY_NAME" --resource-group "$RESOURCE_GROUP" --subscription "$AZURE_SUBSCRIPTION_ID" --audience 'api://AzureADTokenExchange' --issuer 'https://token.actions.githubusercontent.com' --subject "$branch_subject" > /dev/null
 az identity federated-credential create --name "pull-request" --identity-name "$IDENTITY_NAME" --resource-group "$RESOURCE_GROUP" --subscription "$AZURE_SUBSCRIPTION_ID" --audience 'api://AzureADTokenExchange' --issuer 'https://token.actions.githubusercontent.com' --subject "$pr_subject" > /dev/null
 
-echo "Setting GitHub secrets for Azure credentials..."
+echo "Setting GitHub repository variables for Azure credentials..."
 IDENTITY_JSON=$(az identity show --name "$IDENTITY_NAME" --resource-group "$RESOURCE_GROUP" --subscription "$AZURE_SUBSCRIPTION_ID")
-gh secret set AZURE_CLIENT_ID --repo "$ORG/$REPO" --body "$(jq -r '.clientId' <<<"$IDENTITY_JSON")" > /dev/null
-gh secret set AZURE_SUBSCRIPTION_ID --repo "$ORG/$REPO" --body "$AZURE_SUBSCRIPTION_ID" > /dev/null
-gh secret set AZURE_TENANT_ID --repo "$ORG/$REPO" --body "$(jq -r '.tenantId' <<<"$IDENTITY_JSON")" > /dev/null
+gh variable set AZURE_CLIENT_ID --repo "$ORG/$REPO" --body "$(jq -r '.clientId' <<<"$IDENTITY_JSON")" > /dev/null
+gh variable set AZURE_SUBSCRIPTION_ID --repo "$ORG/$REPO" --body "$AZURE_SUBSCRIPTION_ID" > /dev/null
+gh variable set AZURE_TENANT_ID --repo "$ORG/$REPO" --body "$(jq -r '.tenantId' <<<"$IDENTITY_JSON")" > /dev/null
 
 echo "Assigning 'Reader' role to the managed identity for subscription '$AZURE_SUBSCRIPTION_ID'..."
 az role assignment create --assignee-object-id "$(jq -r '.principalId' <<<"$IDENTITY_JSON")" --assignee-principal-type ServicePrincipal --role Reader --scope "/subscriptions/$AZURE_SUBSCRIPTION_ID" > /dev/null

@@ -5,7 +5,7 @@
 Detailed docs live in `docs/`:
 - [`docs/bootstrap.md`](../docs/bootstrap.md) — optional one-time setup of GitHub repo + Azure OIDC infrastructure
 - [`docs/infra.md`](../docs/infra.md) — Bicep infrastructure layout, types, variables, modules, and deployment commands
-- [`docs/workflows.md`](../docs/workflows.md) — all seven CI/CD workflows: triggers, steps, secrets, and conventions
+- [`docs/workflows.md`](../docs/workflows.md) — all seven CI/CD workflows: triggers, steps, variables, and conventions
 - [`docs/function-app.md`](../docs/function-app.md) — Python Function App functions, endpoints, anomaly detection logic, and configuration
 
 ## Build, test, and lint commands
@@ -35,7 +35,7 @@ There is no application build system or unit-test runner. Validation is Bicep li
 
 This repository is an ops bootstrap-and-guardrails repo for an AI-driven FinOps/SecOps setup, not an application codebase.
 
-1. **Bootstrap automation (`bootstrap/`)**: two equivalent scripts (`Bootstrap.ps1` for Windows, `bootstrap.sh` for Bash) perform a one-time setup — create a GitHub repository, Azure resource group and user-assigned managed identity, **two** GitHub OIDC federated credentials (one for `main` branch deployments, one for pull request linting), required GitHub secrets (`AZURE_CLIENT_ID`, `AZURE_SUBSCRIPTION_ID`, `AZURE_TENANT_ID`), and subscription Reader role assignment. See `docs/bootstrap.md`.
+1. **Bootstrap automation (`bootstrap/`)**: two equivalent scripts (`Bootstrap.ps1` for Windows, `bootstrap.sh` for Bash) perform a one-time setup — create a GitHub repository, Azure resource group and user-assigned managed identity, **two** GitHub OIDC federated credentials (one for `main` branch deployments, one for pull request linting), required GitHub repository variables (`AZURE_CLIENT_ID`, `AZURE_SUBSCRIPTION_ID`, `AZURE_TENANT_ID`), and subscription Reader role assignment. See `docs/bootstrap.md`.
 
 2. **Infrastructure as code (`infra/`)**: subscription-scoped Bicep templates that deploy Azure resources. Entry point is `infra/main.bicep` with `infra/main.bicepparam` for configuration. It deploys resource groups via AVM, then orchestrates three resource-group-scoped modules: `supporting_resources.bicep` (Log Analytics, Application Insights, user-assigned identity, hardened storage account, VNet/NSG), `function-app_resources.bicep` (Linux App Service plan + Python 3.12 Function App with managed identity storage auth and VNet integration), and `foundry_resources.bicep` (AI Foundry account and model deployments). Shared types are in `helpers/types.bicep`, shared constants (regions, role definition GUIDs) in `helpers/variables.bicep`. See `docs/infra.md`.
 

@@ -1,6 +1,5 @@
 azure-functions
 azure-identity
-azure-monitor-opentelemetry
 azure-storage-blob
 pandas
 pyarrow

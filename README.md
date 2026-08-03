@@ -1,83 +1,60 @@
 # AI powered Ops
 
-AI-driven **FinOps + SecOps architecture advisor** for Azure, built with Bicep, GitHub Actions, and optional bootstrap automation.
+AI-driven **FinOps + SecOps architecture advisor** on Azure, combining infrastructure-as-code, a Python anomaly-detection Function App, and CI/CD guardrails.
 
-## Overview
+## What this repository is
 
-This repository defines the infrastructure and guardrails for an Azure-based AI operations platform. It is not an application codebase; instead, it provides:
+This is an **operations platform repository**, not a traditional web/API app codebase. It contains:
 
-- **Bootstrap automation** to create the GitHub + Azure foundation needed for secure deployments
-- **Bicep infrastructure** for Azure resource groups, monitoring, storage, a Python Function App, and AI Foundry resources
-- **GitHub Actions workflows** for validation, deployment, branch policy, Python quality checks, and secret scanning
+- Azure infrastructure definitions in Bicep
+- A Python Azure Function that processes FOCUS exports and exposes anomaly APIs
+- GitHub Actions workflows for validation, deployment, and security checks
+- Optional bootstrap automation for first-time GitHub + Azure setup
 
-## How it fits together
+## What gets deployed
 
-1. Bootstrap sets up the GitHub repository, Azure identity, and OIDC trust.
-2. `infra/main.bicep` deploys the Azure foundation.
-3. GitHub Actions validates infrastructure changes on pull requests.
-4. Approved changes deploy from `main`.
+From `infra/`, the platform deploys:
 
-## Repository structure
+- resource group(s)
+- virtual network + network security group
+- two storage accounts (data + function package/runtime)
+- Log Analytics + Application Insights
+- user-assigned managed identity
+- Linux Function App and App Service plan
+- Azure AI Foundry account + model deployments
+
+From `src/python/`, the Function App provides:
+
+- Event Grid-driven normalization/anomaly analysis pipeline
+- HTTP endpoints to read latest anomaly signals, anomaly persistence history, and storage health
+
+## Repository layout
 
 | Path | Purpose |
 |---|---|
-| `bootstrap/` | Optional one-time setup scripts for GitHub repo creation, Azure identity setup, federated credentials, and required secrets |
-| `infra/` | Subscription-scoped Bicep templates for resource groups, supporting Azure services, a Python Function App stack, and AI Foundry resources |
-| `.github/workflows/` | Branch validation, Bicep linting, deployment, Python linting/security scans, and secret scanning |
-| `docs/` | Detailed guides for bootstrap, infrastructure, and workflows |
+| `bootstrap/` | Optional one-time setup scripts for GitHub/Azure foundation and OIDC |
+| `infra/` | Subscription-scoped Bicep templates and modules |
+| `src/python/` | Azure Functions Python app (anomaly detection logic + HTTP endpoints) |
+| `.github/workflows/` | CI/CD, infra deploy, function deploy, lint/security/secret scans |
+| `docs/` | Detailed documentation for bootstrap, infrastructure, workflows, and function app |
 
-## Key components
+## How it works
 
-### Bootstrap
+1. Optional bootstrap creates repository/security prerequisites.
+2. Infrastructure is validated on PRs and deployed from `main`.
+3. Function App code is deployed from `main` when `src/python/**` changes.
+4. Incoming FOCUS exports are processed and anomaly outputs are stored + served via HTTP functions.
 
-Use the scripts in `bootstrap/` when you need to create the repository foundation from scratch. They create:
+## Documentation
 
-- the GitHub repository
-- an Azure resource group
-- a user-assigned managed identity
-- GitHub OIDC federated credentials for `main` deployments and pull request validation
-- the GitHub secrets used by the workflows
+- [Bootstrap guide](docs/bootstrap.md)
+- [Infrastructure guide](docs/infra.md)
+- [Workflows guide](docs/workflows.md)
+- [Function app guide](docs/function-app.md)
 
-See [docs/bootstrap.md](docs/bootstrap.md).
+## Quick start
 
-### Infrastructure
-
-The Bicep templates in `infra/` deploy:
-
-- resource groups
-- Log Analytics Workspace
-- Application Insights
-- user-assigned identity
-- storage account and containers
-- Linux Function App and App Service plan
-- AI Foundry account and model deployments
-
-See [docs/infra.md](docs/infra.md).
-
-### Workflows
-
-The workflows in `.github/workflows/` enforce:
-
-- branch naming rules
-- Bicep linting and validation
-- infrastructure deployment
-- Python linting
-- Python security scanning
-- secret scanning
-
-See [docs/workflows.md](docs/workflows.md).
-
-## Getting started
-
-If you are new to the repo:
-
-1. Read this README for the big picture.
-2. Read [docs/bootstrap.md](docs/bootstrap.md) if you want to create the GitHub/Azure foundation.
-3. Read [docs/infra.md](docs/infra.md) if you want to understand or change the infrastructure.
-4. Read [docs/workflows.md](docs/workflows.md) if you want to understand CI/CD behavior.
-
-## Notes
-
-- Bootstrap is optional.
-- Azure deployments use GitHub OIDC; credentials are not stored in the repo.
-- Infrastructure changes are expected to go through pull requests and workflow validation.
+1. Read [docs/infra.md](docs/infra.md) for architecture and deployment topology.
+2. Read [docs/workflows.md](docs/workflows.md) for CI/CD behavior and required GitHub configuration.
+3. Read [docs/function-app.md](docs/function-app.md) for runtime behavior and endpoints.
+4. Use [docs/bootstrap.md](docs/bootstrap.md) if you need to set up a new repo/subscription foundation.

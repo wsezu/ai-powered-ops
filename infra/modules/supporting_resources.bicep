@@ -127,6 +127,7 @@ module id 'br/public:avm/res/managed-identity/user-assigned-identity:0.6.0' = {
 }
 
 module st 'br/public:avm/res/storage/storage-account:0.33.0' = [for storageAccount in storageAccounts: {
+  dependsOn: [ vnet ]
   name: 'deploy-${storageAccount.name}'
   params: {
     accessTier: storageAccount.?accessTier

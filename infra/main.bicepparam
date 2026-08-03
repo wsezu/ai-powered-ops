@@ -53,7 +53,7 @@ param foundryAccount = {
       name: 'gpt-5.1'
       sku: {
         capacity: 10
-        name: 'DataZoneStandard'
+        name: 'GlobalStandard'
       }
       versionUpgradeOption: 'OnceNewDefaultVersionAvailable'
     }
@@ -66,7 +66,7 @@ param foundryAccount = {
       name: 'gpt-5-mini'
       sku: {
         capacity: 20
-        name: 'DataZoneStandard'
+        name: 'GlobalStandard'
       }
       versionUpgradeOption: 'OnceNewDefaultVersionAvailable'
     }

@@ -17,15 +17,20 @@ normalized_container = "normalized"
 history_prefix = "history/"
 history_lookback_days = int(os.environ.get("HISTORY_LOOKBACK_DAYS", "14"))
 metrics = ["EffectiveCost", "BilledCost"]
-storage_account_name = os.environ["DataStorage__blobServiceUri"]
-
 dod_pct_threshold = 0.50
 iqr_multiplier = 1.5
 z_score_threshold = 3.0
 
-_clientId = os.environ.get("DataStorage__clientId")
-_credential = DefaultAzureCredential(managed_identity_client_id=_clientId) if _clientId else DefaultAzureCredential()
-_blob_service_client = BlobServiceClient(account_url=storage_account_name, credential=_credential)
+_blob_service_client: BlobServiceClient | None = None
+
+def _get_blob_service_client() -> BlobServiceClient:
+  global _blob_service_client
+  if _blob_service_client is None:
+    storage_account_name = os.environ["DataStorage__blobServiceUri"]
+    client_id = os.environ.get("DataStorage__clientId")
+    credential = DefaultAzureCredential(managed_identity_client_id=client_id) if client_id else DefaultAzureCredential()
+    _blob_service_client = BlobServiceClient(account_url=storage_account_name, credential=credential)
+  return _blob_service_client
 
 def _aggregate_daily(df: pd.DataFrame) -> pd.DataFrame:
   group_cols = group_dimensions + ["ChargePeriodStart"]
@@ -104,7 +109,7 @@ def _compute_signals(daily: pd.DataFrame) -> list[dict]:
   return results
 
 def _read_focus_file(blob_name: str, container_name: str) -> pd.DataFrame:
-  blob_client = _blob_service_client.get_blob_client(blob=blob_name, container=container_name)
+  blob_client = _get_blob_service_client().get_blob_client(blob=blob_name, container=container_name)
   stream = blob_client.download_blob().readall()
   df = pd.read_parquet(io.BytesIO(stream))
 
@@ -123,8 +128,8 @@ def _write_output(output: dict) -> None:
   payload = json.dumps(output, indent=2).encode("utf-8")
   timestamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
 
-  _blob_service_client.get_blob_client(blob="latest.json", container=normalized_container).upload_blob(payload, overwrite=True)
-  _blob_service_client.get_blob_client(blob=f"history/{timestamp}.json", container=normalized_container).upload_blob(payload, overwrite=True)
+  _get_blob_service_client().get_blob_client(blob="latest.json", container=normalized_container).upload_blob(payload, overwrite=True)
+  _get_blob_service_client().get_blob_client(blob=f"history/{timestamp}.json", container=normalized_container).upload_blob(payload, overwrite=True)
 
 app = func.FunctionApp()
 
@@ -155,7 +160,7 @@ def get_latest_cost_anomalies(req: func.HttpRequest) -> func.HttpResponse:
   logging.info("GetLatestCostAnomalies trigger received.")
 
   try:
-    blob_client = _blob_service_client.get_blob_client(blob="latest.json", container=normalized_container)
+    blob_client = _get_blob_service_client().get_blob_client(blob="latest.json", container=normalized_container)
 
     if not blob_client.exists():
       return func.HttpResponse(
@@ -184,7 +189,7 @@ def get_cost_anomaly_history(req: func.HttpRequest) -> func.HttpResponse:
   logging.info("GetCostAnomalyHistory trigger received.")
 
   try:
-    latest_client = _blob_service_client.get_blob_client(blob="latest.json", container=normalized_container)
+    latest_client = _get_blob_service_client().get_blob_client(blob="latest.json", container=normalized_container)
 
     if not latest_client.exists():
       return func.HttpResponse(
@@ -217,7 +222,7 @@ def get_cost_anomaly_history(req: func.HttpRequest) -> func.HttpResponse:
     except ValueError:
       lookback = history_lookback_days
 
-    container_client = _blob_service_client.get_container_client(normalized_container)
+    container_client = _get_blob_service_client().get_container_client(normalized_container)
     history_blobs = sorted(
       container_client.list_blobs(name_starts_with=history_prefix),
       key=lambda b: b.name,
@@ -268,7 +273,7 @@ def storage_health_check(req: func.HttpRequest) -> func.HttpResponse:
   container_name = req.params.get("container", normalized_container)
 
   try:
-    container_client = _blob_service_client.get_container_client(container_name)
+    container_client = _get_blob_service_client().get_container_client(container_name)
     blob_names = [b.name for b in container_client.list_blobs()]
 
     return func.HttpResponse(

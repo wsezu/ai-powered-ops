@@ -30,7 +30,8 @@ module asp 'br/public:avm/res/web/serverfarm:0.7.0' = {
     location: resourceGroup().location
     name: serverFarm.name
     reserved: true
-    skuName: 'FC1'
+    skuCapacity: 1
+    skuName: 'B1'
     tags: serverFarm.?tags
     zoneRedundant: false
   }
@@ -52,32 +53,15 @@ module func 'br/public:avm/res/web/site:0.24.0' = {
           AzureWebJobsStorage__clientId: uami.properties.clientId
           DataStorage__blobServiceUri: 'https://${data_st.name}.blob.${az.environment().suffixes.storage}'
           DataStorage__clientId: uami.properties.clientId
+          FUNCTIONS_EXTENSION_VERSION: '~4'
+          FUNCTIONS_WORKER_RUNTIME: 'python'
+          WEBSITE_RUN_FROM_PACKAGE: '1'
         }
         storageAccountResourceId: system_st.id
         storageAccountUseIdentityAuthentication: true
       }
     ]
     enableTelemetry: true
-    functionAppConfig: {
-      deployment: {
-        storage: {
-          authentication: {
-            type: 'UserAssignedIdentity'
-            userAssignedIdentityResourceId: uami.id
-          }
-          type: 'blobContainer'
-          value: 'https://${system_st.name}.blob.${az.environment().suffixes.storage}/app-packages'
-        }
-      }
-      runtime: {
-        name: 'python'
-        version: '3.12'
-      }
-      scaleAndConcurrency: {
-        instanceMemoryMB: 2048
-        maximumInstanceCount: 10
-      }
-    }
     httpsOnly: true
     kind: functionApp.kind
     location: resourceGroup().location
@@ -99,6 +83,7 @@ module func 'br/public:avm/res/web/site:0.24.0' = {
           'https://portal.azure.com'
         ]
       }
+      linuxFxVersion: 'PYTHON|3.12'
     }
     tags: functionApp.?tags
     virtualNetworkSubnetResourceId: virtualNetworkSubnetResourceId

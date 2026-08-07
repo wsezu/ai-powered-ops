@@ -1,0 +1,69 @@
+name: Deploy event grids
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'infra/modules/event_grids.bicep'
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Azure login (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Look up Function App
+        id: function_app
+        run: |
+          FUNCTION_APP_JSON=$(az functionapp list \
+            --query "[?name=='func-aiops-prd-weu-001'] | [0]" \
+            --output json)
+
+          if [ "$FUNCTION_APP_JSON" == "null" ] || [ -z "$FUNCTION_APP_JSON" ]; then
+            echo "::error::Function App 'func-aiops-prd-weu-001' was not found in this subscription."
+            exit 1
+          fi
+
+          echo "id=$(echo "$FUNCTION_APP_JSON" | jq -r '.id')" >> "$GITHUB_OUTPUT"
+          echo "resource_group=$(echo "$FUNCTION_APP_JSON" | jq -r '.resourceGroup')" >> "$GITHUB_OUTPUT"
+
+      - name: Look up data storage account
+        id: storage_account
+        run: |
+          STORAGE_ACCOUNT_ID=$(az storage account show \
+            --name stv2aiopsprdweu001 \
+            --resource-group ${{ steps.function_app.outputs.resource_group }} \
+            --query id \
+            --output tsv)
+
+          if [ -z "$STORAGE_ACCOUNT_ID" ]; then
+            echo "::error::Storage account 'stv2aiopsprdweu001' was not found in resource group ${{ steps.function_app.outputs.resource_group }}."
+            exit 1
+          fi
+
+          echo "id=$STORAGE_ACCOUNT_ID" >> "$GITHUB_OUTPUT"
+
+      - name: Deploy Event Grid resources
+        run: |
+          az deployment group create \
+            --name "aiops-event-grids-${{ github.run_id }}" \
+            --resource-group ${{ steps.function_app.outputs.resource_group }} \
+            --template-file infra/modules/event_grids.bicep \
+            --parameters \
+              functionAppResourceId="${{ steps.function_app.outputs.id }}" \
+              storageAccountResourceId="${{ steps.storage_account.outputs.id }}" \
+            --only-show-errors

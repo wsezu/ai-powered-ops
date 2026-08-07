@@ -20,29 +20,6 @@ module nw 'br/public:avm/res/network/network-watcher:0.5.1' = if(networkWatcher.
   }
 }
 
-module pip 'br/public:avm/res/network/public-ip-address:0.13.0' = {
-  name: 'deploy-${replace(virtualNetwork.name, 'vnet', 'pip')}'
-  params: {
-    enableTelemetry: true
-    location: resourceGroup().location
-    name: replace(virtualNetwork.name, 'vnet', 'pip')
-    tags: virtualNetwork.?tags
-  }
-}
-
-module ng 'br/public:avm/res/network/nat-gateway:2.1.0' = {
-  params: {
-    availabilityZone: -1
-    enableTelemetry: true
-    location: resourceGroup().location
-    name: replace(virtualNetwork.name, 'vnet', 'ng')
-    publicIpResourceIds: [
-      pip.outputs.resourceId
-    ]
-    tags: virtualNetwork.?tags
-  }
-}
-
 module nsg 'br/public:avm/res/network/network-security-group:0.5.3' = {
   name: 'deploy-${networkSecurityGroup.name}'
   params: {
@@ -69,7 +46,6 @@ module vnet 'br/public:avm/res/network/virtual-network:0.10.0' = {
         defaultOutboundAccess: true
         delegation: 'Microsoft.App/environments'
         name: 'FunctionApps'
-        natGatewayResourceId: ng.outputs.resourceId
         networkSecurityGroupResourceId: nsg.outputs.resourceId
         serviceEndpoints: [
           'Microsoft.Storage'

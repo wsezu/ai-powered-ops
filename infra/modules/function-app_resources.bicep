@@ -30,8 +30,7 @@ module asp 'br/public:avm/res/web/serverfarm:0.7.0' = {
     location: resourceGroup().location
     name: serverFarm.name
     reserved: true
-    skuCapacity: 1
-    skuName: 'B1'
+    skuName: 'FC1'
     tags: serverFarm.?tags
     zoneRedundant: false
   }

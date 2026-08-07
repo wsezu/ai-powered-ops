@@ -5,7 +5,7 @@
 The Function App code lives in `src/python/` and is deployed by `deploy-function-app.yml`.
 
 Primary file:
-- `src/python/main.py`
+- `src/python/function_app.py`
 
 Supporting logic:
 - `src/python/anomaly_detection.py`
@@ -39,27 +39,32 @@ Processing steps:
    - z-score threshold
    - IQR bounds
    - day-over-day threshold
-5. Write outputs to normalized container:
+5. Merge updates per signal key (`SubAccountId`, `ServiceName`, `metric`) and write outputs to normalized container:
    - `latest.json`
-   - `history/<timestamp>.json`
+   - `history/<yyyy-mm-dd>.json`
+
+Writes use ETag-conditional retries to avoid lost updates when multiple exports arrive close together.
 
 ## HTTP endpoints
 
 ### `GetLatestCostAnomalies`
 
 - Route: `GET /api/GetLatestCostAnomalies`
+- Auth level: `FUNCTION`
 - Returns latest anomaly snapshot (`latest.json`)
 - Returns 404 with `no_data` status if no snapshot exists
 
 ### `GetCostAnomalyHistory`
 
 - Route: `GET /api/GetCostAnomalyHistory`
+- Auth level: `FUNCTION`
 - Optional query param: `lookback_days`
 - Reads latest signals + historical snapshots and computes persistence streaks per signal key
 
 ### `StorageHealthCheck`
 
 - Route: `GET /api/StorageHealthCheck`
+- Auth level: `FUNCTION`
 - Optional query param: `container`
 - Lists blobs and returns count for health diagnostics
 

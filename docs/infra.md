@@ -2,11 +2,13 @@
 
 ## Overview
 
-Infrastructure is defined under `infra/` and deployed at **subscription scope** via `main.bicep`. The template creates/uses a single primary resource group and deploys platform resources through three modules:
+Infrastructure is defined under `infra/` and deployed at **subscription scope** via `main.bicep`. The template creates/uses a primary resource group and deploys platform resources through three modules:
 
 1. `supporting_resources.bicep`
 2. `function-app_resources.bicep`
 3. `foundry_resources.bicep`
+
+A fourth module, `event_grids.bicep`, is maintained in `infra/modules/` and deployed separately by workflow (`deploy-event-grids.yml`) after core resources are in place.
 
 ## Folder structure
 
@@ -18,6 +20,7 @@ infra/
 │   ├── types.bicep
 │   └── variables.bicep
 └── modules/
+    ├── event_grids.bicep
     ├── supporting_resources.bicep
     ├── function-app_resources.bicep
     └── foundry_resources.bicep
@@ -46,7 +49,7 @@ The function module consumes outputs from supporting resources:
 
 - `project.shortName = aiops`
 - `project.environment = prd`
-- `project.location = swedencentral`
+- `project.location = westeurope`
 
 ### Subscription resolution
 
@@ -61,16 +64,16 @@ The function module consumes outputs from supporting resources:
 
 ### Current configured resources
 
-- Resource group: `rg-aiops-prd-swc-001`
-- App Insights: `appi-aiops-prd-swc-001`
-- Log Analytics: `log-aiops-prd-swc-001`
-- NSG: `nsg-aiops-prd-swc-001`
-- VNet: `vnet-aiops-prd-swc-001`
-- Function App: `func-aiops-prd-swc-001`
-- App Service plan: `asp-aiops-prd-swc-001`
-- Identity: `id-aiops-prd-swc-001`
-- AI Foundry account: `fa-aiops-prd-swc-001`
-- AI Foundry project: `proj-aiops-prd-swc-001`
+- Resource group: `rg-aiops-prd-weu-001`
+- App Insights: `appi-aiops-prd-weu-001`
+- Log Analytics: `log-aiops-prd-weu-001`
+- NSG: `nsg-aiops-prd-weu-001`
+- VNet: `vnet-aiops-prd-weu-001`
+- Function App: `func-aiops-prd-weu-001`
+- App Service plan: `asp-aiops-prd-weu-001`
+- Identity: `id-aiops-prd-weu-001`
+- AI Foundry account: `fa-aiops-prd-weu-001`
+- AI Foundry project: `proj-aiops-prd-weu-001`
 
 ### Storage account intent
 
@@ -130,8 +133,19 @@ Function app wiring:
 Deploys AI Foundry via AVM pattern module `avm/ptn/ai-ml/ai-foundry:0.7.0`.
 
 Configured model deployments:
-- `gpt-5.1` (`DataZoneStandard`, capacity 10)
-- `gpt-5-mini` (`DataZoneStandard`, capacity 20)
+- `gpt-5.1` (`GlobalStandard`, capacity 10)
+- `gpt-5-mini` (`GlobalStandard`, capacity 20)
+
+### `modules/event_grids.bicep`
+
+Resource-group scoped module that wires blob-created events from the data storage account to the Function App:
+
+- Creates an Event Grid **system topic** for the storage account
+- Creates an Event Grid **event subscription** that:
+  - routes to Function `BlobCreatedEventGridFunction`
+  - filters to container path prefix `/blobServices/default/containers/focus-exports/blobs/`
+  - filters to `.parquet` blobs
+  - uses retry policy (`maxDeliveryAttempts: 30`, TTL 1440 minutes)
 
 ## Shared helpers
 

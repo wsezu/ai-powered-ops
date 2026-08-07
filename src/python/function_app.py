@@ -13,6 +13,7 @@ import os
 from anomaly_detection import compute_persistence, is_latest_flagged, signal_key
 
 group_dimensions = ["SubAccountId", "SubAccountName", "ServiceName"]
+focus_exports_container = "focus-exports"
 normalized_container = "normalized"
 history_prefix = "history/"
 history_lookback_days = int(os.environ.get("HISTORY_LOOKBACK_DAYS", "14"))
@@ -139,6 +140,10 @@ def blob_created_event(event: func.EventGridEvent):
   blob_subject = event.subject
   blob_name = blob_subject.split('/blobs/')[1]
   container_name = blob_subject.split('/containers/')[1].split('/')[0]
+
+  if container_name != focus_exports_container:
+    logging.info(f"Ignoring blob event for container '{container_name}' — only '{focus_exports_container}' is processed.")
+    return
 
   logging.info(f"Processing new FOCUS export {blob_name} in container {container_name}")
 

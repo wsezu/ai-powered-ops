@@ -21,7 +21,7 @@ module egst 'br/public:avm/res/event-grid/system-topic:0.7.0' = {
           properties: {
             maxEventsPerBatch: 1
             preferredBatchSizeInKilobytes: 64
-            resourceId: fa.id
+            resourceId: '${fa.id}/functions/BlobCreatedEventGridFunction'
           }
         }
         eventDeliverySchema: 'EventGridSchema'
@@ -29,6 +29,7 @@ module egst 'br/public:avm/res/event-grid/system-topic:0.7.0' = {
           includedEventTypes: [
             'Microsoft.Storage.BlobCreated'
           ]
+          subjectBeginsWith: '/blobServices/default/containers/focus-exports/blobs/'
           subjectEndsWith: '.parquet'
         }
         name: replace(fa.name, 'func', 'evgs')

@@ -32,3 +32,4 @@ jobs:
           app-name: func-aiops-prd-weu-001
           package: src/python
           remote-build: true
+          sku: flexconsumption

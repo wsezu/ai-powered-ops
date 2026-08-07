@@ -1,3 +1,5 @@
+from azure.core import MatchConditions
+from azure.core.exceptions import ResourceExistsError, ResourceModifiedError, ResourceNotFoundError
 from azure.identity import DefaultAzureCredential
 from azure.storage.blob import BlobServiceClient
 from datetime import datetime, timezone
@@ -9,6 +11,7 @@ import io
 import json
 import logging
 import os
+import time
 
 from anomaly_detection import compute_persistence, is_latest_flagged, signal_key
 
@@ -125,12 +128,57 @@ def _read_focus_file(blob_name: str, container_name: str) -> pd.DataFrame:
 
   return df
 
-def _write_output(output: dict) -> None:
-  payload = json.dumps(output, indent=2).encode("utf-8")
-  timestamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+def _merge_signals(existing_signals: list[dict], new_signals: list[dict]) -> list[dict]:
+  """Upserts new_signals into existing_signals, keyed the same way anomaly_detection
+  matches signals across snapshots (SubAccountId, ServiceName, metric). This is what
+  lets each subscription's export update only its own entries, leaving the other
+  subscriptions' most recent data untouched."""
+  merged = {signal_key(s): s for s in existing_signals}
+  for s in new_signals:
+    merged[signal_key(s)] = s
+  return list(merged.values())
 
-  _get_blob_service_client().get_blob_client(blob="latest.json", container=normalized_container).upload_blob(payload, overwrite=True)
-  _get_blob_service_client().get_blob_client(blob=f"history/{timestamp}.json", container=normalized_container).upload_blob(payload, overwrite=True)
+def _read_json_blob(container: str, blob_name: str) -> tuple[dict | None, str | None]:
+  blob_client = _get_blob_service_client().get_blob_client(blob=blob_name, container=container)
+  try:
+    downloader = blob_client.download_blob()
+    data = json.loads(downloader.readall())
+    return data, downloader.properties.etag
+  except ResourceNotFoundError:
+    return None, None
+
+def _upsert_merged_blob(container: str, blob_name: str, new_signals: list[dict], source_blob: str, max_attempts: int = 5) -> dict:
+  """Reads the current blob (if any), merges in new_signals, and writes back —
+  using ETag-conditional writes so two near-simultaneous exports (e.g. four
+  subscriptions' daily exports landing within seconds of each other) can't
+  silently overwrite one another. Retries on conflict rather than failing."""
+  blob_client = _get_blob_service_client().get_blob_client(blob=blob_name, container=container)
+
+  for attempt in range(max_attempts):
+    existing, etag = _read_json_blob(container, blob_name)
+    existing_signals = existing.get("signals", []) if existing else []
+    merged_signals = _merge_signals(existing_signals, new_signals)
+    output = _build_output(signals=merged_signals, source_blob=source_blob)
+    payload = json.dumps(output, indent=2).encode("utf-8")
+
+    try:
+      if etag is None:
+        blob_client.upload_blob(payload, overwrite=False)
+      else:
+        blob_client.upload_blob(payload, overwrite=True, etag=etag, match_condition=MatchConditions.IfNotModified)
+      return output
+    except (ResourceExistsError, ResourceModifiedError):
+      if attempt == max_attempts - 1:
+        raise
+      time.sleep(0.5 * (attempt + 1))
+
+  raise RuntimeError(f"Failed to write {blob_name} after {max_attempts} attempts due to concurrent updates.")
+
+def _write_output(signals: list[dict], source_blob: str) -> dict:
+  today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+  output = _upsert_merged_blob(normalized_container, "latest.json", signals, source_blob)
+  _upsert_merged_blob(normalized_container, f"{history_prefix}{today}.json", signals, source_blob)
+  return output
 
 app = func.FunctionApp()
 
@@ -151,9 +199,15 @@ def blob_created_event(event: func.EventGridEvent):
     df = _read_focus_file(blob_name=blob_name, container_name=container_name)
     daily = _aggregate_daily(df=df)
     signals = _compute_signals(daily=daily)
-    output = _build_output(signals=signals, source_blob=f"{container_name}/{blob_name}")
-    _write_output(output=output)
-    logging.info(f"Normalization complete. {len(output['signals'])} signal groups with {output['anomaly_count']} anomalies.")
+
+    source_blob = f"{container_name}/{blob_name}"
+    updated_at = datetime.now(timezone.utc).isoformat()
+    for s in signals:
+      s["source_blob"] = source_blob
+      s["updated_at"] = updated_at
+
+    output = _write_output(signals=signals, source_blob=source_blob)
+    logging.info(f"Normalization complete. {output['signal_count']} total signal groups ({len(signals)} updated by this export), {output['anomaly_count']} anomalies across all subscriptions.")
   except Exception as e:
     logging.error(f"Error processing FOCUS export {container_name}/{blob_name}: {e}")
     raise

@@ -10,6 +10,7 @@ import pandas as pd
 import io
 import json
 import logging
+import math
 import os
 import time
 
@@ -50,6 +51,11 @@ def _build_output(signals: list[dict], source_blob: str) -> dict:
     "signals": signals,
   }
 
+def _finite_or_none(value: float) -> float | None:
+  """pd.isna() catches NaN but not +/-inf (e.g. pct_change() from a zero baseline),
+  and raw inf/-inf serialize as invalid JSON via json.dumps. math.isfinite() catches both."""
+  return float(value) if math.isfinite(value) else None
+
 def _compute_signals(daily: pd.DataFrame) -> list[dict]:
   results = []
 
@@ -85,11 +91,11 @@ def _compute_signals(daily: pd.DataFrame) -> list[dict]:
       entry["mean"] = float(mean)
       entry["std_dev"] = float(std)
       entry["iqr_bounds"] = {"lower": float(lower_bound), "upper": float(upper_bound)}
-      entry["latest_day_over_day_pct_change"] = float(dod_pct.iloc[-1]) if not pd.isna(dod_pct.iloc[-1]) else None
+      entry["latest_day_over_day_pct_change"] = _finite_or_none(dod_pct.iloc[-1])
 
       for i in range(n):
         value, z = float(series.iloc[i]), float(z_scores.iloc[i])
-        dod = float(dod_pct.iloc[i]) if not pd.isna(dod_pct.iloc[i]) else None
+        dod = _finite_or_none(dod_pct.iloc[i])
 
         flags = []
         if abs(z) > z_score_threshold:

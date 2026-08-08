@@ -46,7 +46,7 @@ param foundryAccount = {
         // Function App's user-assigned managed identity — needed so the ChatWithAgent
         // endpoint can actually invoke the agent at runtime.
         // az identity show --name <function-app-uami-name> --resource-group <rg-name> --query principalId --output tsv
-        principalId: 'REPLACE_WITH_FUNCTION_APP_UAMI_PRINCIPAL_ID'
+        principalId: '553277dc-fd84-4cde-ac6a-5c22b821f8a9'
         principalType: 'ServicePrincipal'
         roleDefinitionId: variable.roleDefinitionId.FoundryUserRoleId
       }
@@ -55,7 +55,7 @@ param foundryAccount = {
         // so a workflow can create/update the agent definition, rather than that
         // being a one-off manual step from someone's own machine.
         // az identity show --name <ci-cd-identity-name> --resource-group <ci-cd-rg-name> --query principalId --output tsv
-        principalId: 'REPLACE_WITH_CICD_IDENTITY_PRINCIPAL_ID'
+        principalId: '97b68fe2-d098-43a8-bb4a-4c1379c174bf'
         principalType: 'ServicePrincipal'
         roleDefinitionId: variable.roleDefinitionId.FoundryUserRoleId
       }

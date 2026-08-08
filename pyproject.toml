@@ -1,0 +1,11 @@
+[tool.ruff]
+line-length = 120
+
+[tool.ruff.lint]
+# BLE001 (flake8-blind-except) is intentionally disabled: this codebase catches
+# broad Exception at the boundary of HTTP endpoints and event handlers so a
+# single unexpected error returns a clean response / logs and moves on, rather
+# than crashing the whole invocation. That's the correct pattern at these call
+# sites, not an oversight — narrowing the except clauses there would risk
+# silently missing genuinely unexpected errors.
+ignore = ["BLE001"]

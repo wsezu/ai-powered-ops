@@ -6,6 +6,7 @@ type aiFoundryConfiguration = {
     displayName: string
     name: string
   }?
+  roleAssignments: roleAssignment[]?
   sku: 'S0'?
 }
 

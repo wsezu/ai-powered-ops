@@ -41,6 +41,25 @@ param foundryAccount = {
       displayName: 'AI powered Ops'
       name: 'proj-${resourceSuffix}-001'
     }
+    roleAssignments: [
+      {
+        // Function App's user-assigned managed identity — needed so the ChatWithAgent
+        // endpoint can actually invoke the agent at runtime.
+        // az identity show --name <function-app-uami-name> --resource-group <rg-name> --query principalId --output tsv
+        principalId: 'REPLACE_WITH_FUNCTION_APP_UAMI_PRINCIPAL_ID'
+        principalType: 'ServicePrincipal'
+        roleDefinitionId: variable.roleDefinitionId.FoundryUserRoleId
+      }
+      {
+        // CI/CD identity (the one GitHub Actions authenticates as via OIDC) — needed
+        // so a workflow can create/update the agent definition, rather than that
+        // being a one-off manual step from someone's own machine.
+        // az identity show --name <ci-cd-identity-name> --resource-group <ci-cd-rg-name> --query principalId --output tsv
+        principalId: 'REPLACE_WITH_CICD_IDENTITY_PRINCIPAL_ID'
+        principalType: 'ServicePrincipal'
+        roleDefinitionId: variable.roleDefinitionId.FoundryUserRoleId
+      }
+    ]
     sku: 'S0'
   }
   aiModelDeployments: [

@@ -25,6 +25,8 @@ metrics = ["EffectiveCost", "BilledCost"]
 dod_pct_threshold = 0.50
 iqr_multiplier = 1.5
 z_score_threshold = 3.0
+min_data_points_for_statistics = int(os.environ.get("MIN_DATA_POINTS_FOR_STATISTICS", "10"))
+min_absolute_cost_delta = float(os.environ.get("MIN_ABSOLUTE_COST_DELTA", "0.01"))
 
 _blob_service_client: BlobServiceClient | None = None
 
@@ -76,8 +78,8 @@ def _compute_signals(daily: pd.DataFrame) -> list[dict]:
         "anomalies": [],
       }
 
-      if n < 3:
-        entry["note"] = "Insufficient data points for statistical signals (need >= 3 data points)."
+      if n < min_data_points_for_statistics:
+        entry["note"] = f"Insufficient data points for statistical signals (need >= {min_data_points_for_statistics} data points)."
         results.append(entry)
         continue
 
@@ -102,7 +104,7 @@ def _compute_signals(daily: pd.DataFrame) -> list[dict]:
           flags.append("z_score")
         if value < lower_bound or value > upper_bound:
           flags.append("iqr")
-        if dod is not None and abs(dod) >= dod_pct_threshold:
+        if dod is not None and abs(dod) >= dod_pct_threshold and abs(value - float(series.iloc[i - 1])) >= min_absolute_cost_delta:
           flags.append("day_over_day")
 
         if flags:

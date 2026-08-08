@@ -30,11 +30,11 @@ jobs:
         id: function_app
         run: |
           FUNCTION_APP_JSON=$(az functionapp list \
-            --query "[?name=='func-aiops-prd-weu-001'] | [0]" \
+            --query "[?name=='${{ vars.FUNCTION_APP_NAME }}'] | [0]" \
             --output json)
 
           if [ "$FUNCTION_APP_JSON" == "null" ] || [ -z "$FUNCTION_APP_JSON" ]; then
-            echo "::error::Function App 'func-aiops-prd-weu-001' was not found in this subscription."
+            echo "::error::Function App '${{ vars.FUNCTION_APP_NAME }}' was not found in this subscription."
             exit 1
           fi
 
@@ -45,13 +45,13 @@ jobs:
         id: storage_account
         run: |
           STORAGE_ACCOUNT_ID=$(az storage account show \
-            --name stv2aiopsprdweu001 \
+            --name ${{ vars.DATA_STORAGE_ACCOUNT_NAME }} \
             --resource-group ${{ steps.function_app.outputs.resource_group }} \
             --query id \
             --output tsv)
 
           if [ -z "$STORAGE_ACCOUNT_ID" ]; then
-            echo "::error::Storage account 'stv2aiopsprdweu001' was not found in resource group ${{ steps.function_app.outputs.resource_group }}."
+            echo "::error::Storage account '${{ vars.DATA_STORAGE_ACCOUNT_NAME }}' was not found in resource group ${{ steps.function_app.outputs.resource_group }}."
             exit 1
           fi
 

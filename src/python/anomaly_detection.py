@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+
 def signal_key(signal: dict) -> tuple:
     """Identifies a Signal group. Note: this must exactly match `group_dimensions + metric` in your `BlobCreatedEventGridFunction`."""
     return (signal.get("SubAccountId"), signal.get("ServiceName"), signal.get("metric"))

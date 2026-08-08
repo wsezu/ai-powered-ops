@@ -1,20 +1,24 @@
-from azure.core import MatchConditions
-from azure.core.exceptions import ResourceExistsError, ResourceModifiedError, ResourceNotFoundError
-from azure.identity import DefaultAzureCredential
-from azure.storage.blob import BlobServiceClient
-from datetime import datetime, timezone
-
-import azure.functions as func
-import pandas as pd
-
 import io
 import json
 import logging
 import math
 import os
 import time
+from datetime import datetime, timezone
 
+import azure.functions as func
+import pandas as pd
 from anomaly_detection import compute_persistence, is_latest_flagged, signal_key
+from azure.core import MatchConditions
+from azure.core.exceptions import (
+  ResourceExistsError,
+  ResourceModifiedError,
+  ResourceNotFoundError,
+)
+from azure.identity import DefaultAzureCredential
+from azure.storage.blob import BlobServiceClient
+
+logger = logging.getLogger(__name__)
 
 group_dimensions = ["SubAccountId", "SubAccountName", "ServiceName"]
 focus_exports_container = "focus-exports"
@@ -198,10 +202,10 @@ def blob_created_event(event: func.EventGridEvent):
   container_name = blob_subject.split('/containers/')[1].split('/')[0]
 
   if container_name != focus_exports_container:
-    logging.info(f"Ignoring blob event for container '{container_name}' — only '{focus_exports_container}' is processed.")
+    logger.info(f"Ignoring blob event for container '{container_name}' — only '{focus_exports_container}' is processed.")
     return
 
-  logging.info(f"Processing new FOCUS export {blob_name} in container {container_name}")
+  logger.info(f"Processing new FOCUS export {blob_name} in container {container_name}")
 
   try:
     df = _read_focus_file(blob_name=blob_name, container_name=container_name)
@@ -215,16 +219,16 @@ def blob_created_event(event: func.EventGridEvent):
       s["updated_at"] = updated_at
 
     output = _write_output(signals=signals, source_blob=source_blob)
-    logging.info(f"Normalization complete. {output['signal_count']} total signal groups ({len(signals)} updated by this export), {output['anomaly_count']} anomalies across all subscriptions.")
+    logger.info(f"Normalization complete. {output['signal_count']} total signal groups ({len(signals)} updated by this export), {output['anomaly_count']} anomalies across all subscriptions.")
   except Exception as e:
-    logging.error(f"Error processing FOCUS export {container_name}/{blob_name}: {e}")
+    logger.error(f"Error processing FOCUS export {container_name}/{blob_name}: {e}")
     raise
 
 
 @app.function_name(name="GetLatestCostAnomalies")
 @app.route(route="GetLatestCostAnomalies", methods=["GET"], auth_level=func.AuthLevel.FUNCTION)
 def get_latest_cost_anomalies(req: func.HttpRequest) -> func.HttpResponse:
-  logging.info("GetLatestCostAnomalies trigger received.")
+  logger.info("GetLatestCostAnomalies trigger received.")
 
   try:
     blob_client = _get_blob_service_client().get_blob_client(blob="latest.json", container=normalized_container)
@@ -241,7 +245,7 @@ def get_latest_cost_anomalies(req: func.HttpRequest) -> func.HttpResponse:
     raw = blob_client.download_blob().readall()
     return func.HttpResponse(raw, status_code=200, mimetype="application/json")
   except Exception as e:
-    logging.error(f"The following exception occured while getting the latest results: {e}")
+    logger.error(f"The following exception occured while getting the latest results: {e}")
     return func.HttpResponse(
       json.dumps({
         "status": "error",
@@ -253,7 +257,7 @@ def get_latest_cost_anomalies(req: func.HttpRequest) -> func.HttpResponse:
 @app.function_name(name="GetCostAnomalyHistory")
 @app.route(route="GetCostAnomalyHistory", methods=["GET"], auth_level=func.AuthLevel.FUNCTION)
 def get_cost_anomaly_history(req: func.HttpRequest) -> func.HttpResponse:
-  logging.info("GetCostAnomalyHistory trigger received.")
+  logger.info("GetCostAnomalyHistory trigger received.")
 
   try:
     latest_client = _get_blob_service_client().get_blob_client(blob="latest.json", container=normalized_container)
@@ -324,7 +328,7 @@ def get_cost_anomaly_history(req: func.HttpRequest) -> func.HttpResponse:
     return func.HttpResponse(json.dumps(result), status_code=200, mimetype="application/json")
 
   except Exception as e:
-    logging.error(f"The following error occured while fetching the cost anomaly history: {e}")
+    logger.error(f"The following error occured while fetching the cost anomaly history: {e}")
     return func.HttpResponse(
       json.dumps({"status": "error", "message": str(e)}),
       status_code=500,
@@ -335,7 +339,7 @@ def get_cost_anomaly_history(req: func.HttpRequest) -> func.HttpResponse:
 @app.function_name(name="StorageHealthCheck")
 @app.route(route="StorageHealthCheck", methods=["GET"], auth_level=func.AuthLevel.FUNCTION)
 def storage_health_check(req: func.HttpRequest) -> func.HttpResponse:
-  logging.info("StorageHealthCheck trigger received.")
+  logger.info("StorageHealthCheck trigger received.")
 
   container_name = req.params.get("container", normalized_container)
 
@@ -354,7 +358,7 @@ def storage_health_check(req: func.HttpRequest) -> func.HttpResponse:
       mimetype="application/json",
     )
   except Exception as e:
-    logging.error(f"Storage health check failed for container '{container_name}': {e}")
+    logger.error(f"Storage health check failed for container '{container_name}': {e}")
     return func.HttpResponse(
       json.dumps({
         "status": "error",

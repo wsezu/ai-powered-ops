@@ -16,13 +16,13 @@ jobs:
         run: |
           BRANCH="${{ github.head_ref }}"
 
-          REGEX="^(feature|bugfix|hotfix)\/[a-zA-Z0-9._-]+$"
+          REGEX="^(feature|bugfix|designfix|hotfix)\/[a-zA-Z0-9._-]+$"
 
           if [[ ! "$BRANCH" =~ $REGEX ]]; then
             echo "❌ Invalid branch name:"
             echo "$BRANCH"
             echo ""
-            echo "Valid branch names are: feature, bugfix, hotfix."
+            echo "Valid branch names are: feature, bugfix, designfix, hotfix."
             echo ""
             echo "Examples:"
             echo "feature/PROJ-123-login-page"

@@ -7,7 +7,8 @@
       "parameters": {
         "type": "object",
         "properties": {},
-        "required": []
+        "required": [],
+        "additionalProperties": false
       }
     }
   },
@@ -20,11 +21,12 @@
         "type": "object",
         "properties": {
           "lookback_days": {
-            "type": "integer",
-            "description": "How many days of history to check when computing persistence. Defaults to the server-side configured value (currently 14) if omitted."
+            "type": ["integer", "null"],
+            "description": "How many days of history to check when computing persistence. Pass null to use the server-side configured default (currently 14)."
           }
         },
-        "required": []
+        "required": ["lookback_days"],
+        "additionalProperties": false
       }
     }
   }

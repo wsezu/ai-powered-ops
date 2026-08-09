@@ -23,7 +23,7 @@ CI/CD automation is defined in `.github/workflows/`. There are **eight** workflo
 
 ### `validate-branch-name.yml`
 
-- Regex: `^(feature|bugfix|hotfix)/[a-zA-Z0-9._-]+$`
+- Regex: `^(feature|bugfix|designfix|hotfix)\/[a-zA-Z0-9._-]+$`
 - Blocks PR on mismatch.
 
 ### `bicep-lint.yml`
@@ -43,6 +43,7 @@ CI/CD automation is defined in `.github/workflows/`. There are **eight** workflo
   - `vars.AZURE_CLIENT_ID`
   - `vars.AZURE_TENANT_ID`
   - `vars.AZURE_SUBSCRIPTION_ID`
+- Uses `vars.DEPLOYMENT_LOCATION` for the deployment region.
 - Exposes `AZURE_SUBSCRIPTION_ID` as runtime env var for Bicep param resolution.
 - Runs subscription deployment of `infra/main.bicep` with `infra/main.bicepparam`.
 
@@ -57,7 +58,7 @@ CI/CD automation is defined in `.github/workflows/`. There are **eight** workflo
   - `functionAppResourceId`
   - `storageAccountResourceId`
 
-### `deploy-function-app.yml`
+### `deploy-function-app-apps.yml`
 
 - Trigger: pushes to `main` affecting `src/python/**`
 - Uses OIDC Azure login with **repository variables** (`vars.*`)
@@ -90,11 +91,14 @@ CI/CD automation is defined in `.github/workflows/`. There are **eight** workflo
 
 ## OIDC and GitHub configuration
 
-All Azure-authenticating workflows (`bicep-lint.yml`, `deploy-azure-resources.yml`, `deploy-event-grids.yml`, `deploy-function-app.yml`) read from the same **repository variables**:
+All Azure-authenticating workflows (`bicep-lint.yml`, `deploy-azure-resources.yml`, `deploy-event-grids.yml`, `deploy-function-app-apps.yml`) read from the same **repository variables**:
 
 - `AZURE_CLIENT_ID`
 - `AZURE_TENANT_ID`
 - `AZURE_SUBSCRIPTION_ID`
+- `DEPLOYMENT_LOCATION` (used by infrastructure deployment)
+- `FUNCTION_APP_NAME` (used by function-app deployment and Event Grid wiring)
+- `DATA_STORAGE_ACCOUNT_NAME` (used by Event Grid wiring)
 
 None of these three values are sensitive under OIDC — the actual trust boundary is the federated credential's `subject` claim, not the secrecy of a client ID, tenant ID, or subscription ID.
 

@@ -75,6 +75,11 @@ The function module consumes outputs from supporting resources:
 - AI Foundry account: `fa-aiops-prd-weu-001`
 - AI Foundry project: `proj-aiops-prd-weu-001`
 
+The deployed Foundry account currently includes two model deployments:
+
+- `gpt-5.1` (`GlobalStandard`, capacity 10)
+- `gpt-5-mini` (`GlobalStandard`, capacity 20)
+
 ### Storage account intent
 
 `storageAccounts` is an array with two entries:
@@ -131,10 +136,6 @@ Function app wiring:
 ### `modules/foundry_resources.bicep`
 
 Deploys AI Foundry via AVM pattern module `avm/ptn/ai-ml/ai-foundry:0.7.0`.
-
-Configured model deployments:
-- `gpt-5.1` (`GlobalStandard`, capacity 10)
-- `gpt-5-mini` (`GlobalStandard`, capacity 20)
 
 ### `modules/event_grids.bicep`
 

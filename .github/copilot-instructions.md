@@ -7,6 +7,7 @@ Detailed docs live in `docs/`:
 - [`docs/infra.md`](../docs/infra.md) — Bicep infrastructure layout, types, variables, modules, and deployment commands
 - [`docs/workflows.md`](../docs/workflows.md) — all eight CI/CD workflows: triggers, steps, variables, and conventions
 - [`docs/function-app.md`](../docs/function-app.md) — Python Function App functions, endpoints, anomaly detection logic, and configuration
+- [`docs/agents.md`](../docs/agents.md) — Foundry agent assets, setup script, and tool surface
 
 ## Build, test, and lint commands
 
@@ -33,7 +34,7 @@ There is no application build system or unit-test runner. Validation is Bicep li
 
 ## High-level architecture
 
-This repository is an ops bootstrap-and-guardrails repo for an AI-driven FinOps/SecOps setup, not an application codebase.
+This repository is an ops bootstrap-and-guardrails repo for an AI-driven FinOps/SecOps architecture advisor on Azure, combining infrastructure-as-code, a Python anomaly-detection Function App, and CI/CD guardrails. It is still a work in progress: bootstrap and infra are done, agents are in progress, and a chat interface is planned.
 
 1. **Bootstrap automation (`bootstrap/`)**: two equivalent scripts (`Bootstrap.ps1` for Windows, `bootstrap.sh` for Bash) perform a one-time setup — create a GitHub repository, Azure resource group and user-assigned managed identity, **two** GitHub OIDC federated credentials (one for `main` branch deployments, one for pull request linting), required GitHub repository variables (`AZURE_CLIENT_ID`, `AZURE_SUBSCRIPTION_ID`, `AZURE_TENANT_ID`), and subscription Reader role assignment. See `docs/bootstrap.md`.
 
@@ -51,7 +52,7 @@ This repository is an ops bootstrap-and-guardrails repo for an AI-driven FinOps/
    - `bicep-lint.yml` — lints and compiles Bicep files on PRs to `main` targeting `infra/**`; requires OIDC Azure login for public AVM registry module resolution.
    - `deploy-azure-resources.yml` — deploys `infra/main.bicep` to Azure on push to `main` when `infra/**` changes.
    - `deploy-event-grids.yml` — deploys Event Grid wiring on push to `main` when `infra/modules/event_grids.bicep` changes; looks up Function App and storage account, then applies event subscriptions.
-   - `deploy-function-app.yml` — deploys `src/python/` to the Function App on push to `main` when `src/python/**` changes; uses `Azure/functions-action@v1` with `sku: flexconsumption` and `remote-build: true`.
+   - `deploy-function-app-apps.yml` — deploys `src/python/` to the Function App on push to `main` when `src/python/**` changes; uses `Azure/functions-action@v1` with `sku: flexconsumption` and `remote-build: true`.
    - `python-lint.yml` — runs Ruff on Python files on PRs to `main`.
    - `security-scan.yml` — runs Bandit (static analysis) and pip-audit (CVE check) on all Python files.
    - `secret-scan.yml` — runs Gitleaks on every push and PR across full commit history.
@@ -60,7 +61,7 @@ This repository is an ops bootstrap-and-guardrails repo for an AI-driven FinOps/
 
 ## Key conventions specific to this repo
 
-- **Branch naming is enforced in CI**: branch names must match `^(feature|bugfix|hotfix)/[a-zA-Z0-9._-]+$`.
+- **Branch naming is enforced in CI**: branch names must match `^(feature|bugfix|designfix|hotfix)\/[a-zA-Z0-9._-]+$`.
 - **Bootstrap resource naming pattern**: `id-<repo>-prd-<location>-001` (identity), `rg-<repo>-prd-<location>-001` (resource group).
 - **Infra resource naming pattern**: `<type>-<shortName>-<environment>-<regionShortName>-<instance>`, e.g. `rg-aiops-prd-weu-001`. Storage accounts use `stv2<shortName><environment><regionShortName>001` (no hyphens, max 24 chars).
 - **Region references in Bicep**: always use `v.regions.<key>.location` from `helpers/variables.bicep` — never hardcode region strings.

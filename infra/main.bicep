@@ -5,10 +5,12 @@ import * as type from 'helpers/types.bicep'
 param applicationInsights type.applicationInsights
 param foundryAccount type.foundryAccount
 param functionApp type.functionApp
+param keyVault type.keyVault
 param logAnalyticsWorkspace type.logAnalyticsWorkspace
 param networkSecurityGroup type.networkSecurityGroup
 param resourceGroups type.resourceGroup[]
 param serverFarm type.serverFarm
+param staticWebApp type.staticWebApp
 param storageAccounts type.storageAccount[]
 param userAssignedIdentity type.userAssignedIdentity
 param virtualNetwork type.virtualNetwork
@@ -63,6 +65,16 @@ module far 'modules/function-app_resources.bicep' = {
     systemStorageAccountResourceId: sr.outputs.storageAccounts[1].resourceId
     userAssignedIdentityResourceId: sr.outputs.userAssignedIdentity.resourceId
     virtualNetworkSubnetResourceId: sr.outputs.virtualNetwork.subnetResourceIds[0]
+  }
+  scope: az.resourceGroup(resourceGroups[0].name)
+}
+
+module wfr 'modules/web_frontend_resources.bicep' = {
+  name: 'deploy-web-frontend-resources'
+  params: {
+    keyVault: keyVault
+    linkedBackendResourceId: far.outputs.functionApp.resourceId
+    staticWebApp: staticWebApp
   }
   scope: az.resourceGroup(resourceGroups[0].name)
 }

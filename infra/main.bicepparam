@@ -32,6 +32,24 @@ param functionApp = {
   tags: tags
 }
 
+param keyVault = {
+  location: project.location
+  name: 'kv-${resourceSuffix}-001'
+  roleAssignments: [
+    {
+      // Your own account — needed to populate the Entra ID client secret via
+      // `az keyvault secret set` when running the app registration setup script.
+      // Subscription Owner/Contributor does NOT grant Key Vault data access under
+      // the RBAC permission model — this is a separate, explicit grant.
+      // az ad signed-in-user show --query id --output tsv
+      principalId: 'REPLACE_WITH_YOUR_OWN_ENTRA_OBJECT_ID'
+      principalType: 'User'
+      roleDefinitionId: variable.roleDefinitionId.KeyVaultSecretsOfficerRoleId
+    }
+  ]
+  tags: tags
+}
+
 param foundryAccount = {
   aiFoundryConfiguration: {
     accountName: 'fa-${resourceSuffix}-001'
@@ -119,6 +137,13 @@ param resourceGroups = [
 
 param serverFarm = {
   name: 'asp-${resourceSuffix}-001'
+  tags: tags
+}
+
+param staticWebApp = {
+  location: project.location
+  name: 'swa-${resourceSuffix}-001'
+  sku: 'Standard'
   tags: tags
 }
 

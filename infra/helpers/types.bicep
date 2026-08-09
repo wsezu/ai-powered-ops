@@ -155,6 +155,22 @@ type userAssignedIdentity = {
 }
 
 @export()
+type keyVault = {
+  location: string?
+  name: string
+  roleAssignments: roleAssignment[]?
+  tags: object?
+}
+
+@export()
+type staticWebApp = {
+  location: string?
+  name: string
+  sku: 'Free' | 'Standard'?
+  tags: object?
+}
+
+@export()
 type virtualNetwork = {
   addressPrefixes: string[]
   location: string?

@@ -21,6 +21,8 @@ Supporting logic:
   - `pyarrow`
   - `azure-monitor-opentelemetry`
 
+The app uses managed identity for all storage access.
+
 ## Trigger and processing flow
 
 ### Event Grid trigger
@@ -42,6 +44,8 @@ Processing steps:
 5. Merge updates per signal key (`SubAccountId`, `ServiceName`, `metric`) and write outputs to normalized container:
    - `latest.json`
    - `history/<yyyy-mm-dd>.json`
+
+Only blobs in the `focus-exports` container with a `.parquet` suffix are processed.
 
 Writes use ETag-conditional retries to avoid lost updates when multiple exports arrive close together.
 
@@ -81,6 +85,8 @@ The function expects managed identity-based configuration:
 - `AzureWebJobsStorage__credential=managedidentity`
 
 These are set through the infra module `infra/modules/function-app_resources.bicep`.
+
+It also receives `FOUNDRY_PROJECT_ENDPOINT` for the agent-facing functionality added in the app configuration.
 
 ## Signal grouping and persistence
 

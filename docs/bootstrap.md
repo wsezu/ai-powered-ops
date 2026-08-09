@@ -23,6 +23,8 @@ Bootstrap is optional, but useful when creating a new repo/subscription setup fr
    - `AZURE_TENANT_ID`
 6. Reader role assignment at subscription scope for the identity principal
 
+The scripts also follow the repository's naming conventions and OIDC setup used by the GitHub Actions workflows in `.github/workflows/`.
+
 ## Prerequisites
 
 ### CLI tools

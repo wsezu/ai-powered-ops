@@ -2,6 +2,8 @@
 
 AI-driven **FinOps + SecOps architecture advisor** on Azure, combining infrastructure-as-code, a Python anomaly-detection Function App, and CI/CD guardrails.
 
+This repo is still a **work in progress**: the core platform is in place, but the advisor experience is not complete yet.
+
 ## What this repository is
 
 This is an **operations platform repository**, not a traditional web/API app codebase. It contains:
@@ -45,12 +47,20 @@ From `src/python/`, the Function App provides:
 3. Function App code is deployed from `main` when `src/python/**` changes.
 4. Incoming FOCUS exports are processed and anomaly outputs are stored + served via HTTP functions.
 
+## Progress
+
+1. Bootstrap — done
+2. Deploy infra — done
+3. Implement agents — work in progress
+4. Implement chat interface — planned
+
 ## Documentation
 
 - [Bootstrap guide](docs/bootstrap.md)
 - [Infrastructure guide](docs/infra.md)
 - [Workflows guide](docs/workflows.md)
 - [Function app guide](docs/function-app.md)
+- [Agents guide](docs/agents.md)
 
 ## Quick start
 

@@ -9,6 +9,7 @@ from datetime import datetime, timezone
 import azure.functions as func
 import pandas as pd
 from anomaly_detection import compute_persistence, is_latest_flagged, signal_key
+from azure.ai.projects import AIProjectClient
 from azure.core import MatchConditions
 from azure.core.exceptions import (
   ResourceExistsError,
@@ -31,6 +32,21 @@ iqr_multiplier = 1.5
 z_score_threshold = 3.0
 min_data_points_for_statistics = int(os.environ.get("MIN_DATA_POINTS_FOR_STATISTICS", "10"))
 min_absolute_cost_delta = float(os.environ.get("MIN_ABSOLUTE_COST_DELTA", "0.01"))
+agent_name = "cost-efficiency-advisor"
+max_tool_call_iterations = int(os.environ.get("MAX_TOOL_CALL_ITERATIONS", "5"))
+
+_project_client: AIProjectClient | None = None
+
+def _get_openai_client():
+  global _project_client
+  if _project_client is None:
+    endpoint = os.environ["FOUNDRY_PROJECT_ENDPOINT"]
+    # Same user-assigned identity already used for storage access — it holds
+    # Foundry User on the Foundry account, granted alongside its storage roles.
+    client_id = os.environ.get("DataStorage__clientId")
+    credential = DefaultAzureCredential(managed_identity_client_id=client_id) if client_id else DefaultAzureCredential()
+    _project_client = AIProjectClient(endpoint=endpoint, credential=credential)
+  return _project_client.get_openai_client()
 
 _blob_service_client: BlobServiceClient | None = None
 
@@ -225,25 +241,121 @@ def blob_created_event(event: func.EventGridEvent):
     raise
 
 
+def _get_latest_cost_anomalies_data() -> dict:
+  blob_client = _get_blob_service_client().get_blob_client(blob="latest.json", container=normalized_container)
+
+  if not blob_client.exists():
+    return {
+      "status": "no_data",
+      "message": "No result available yet — waiting on the next scheduled export.",
+    }
+
+  return json.loads(blob_client.download_blob().readall())
+
+def _get_cost_anomaly_history_data(lookback_days: int | None = None) -> dict:
+  latest = _get_latest_cost_anomalies_data()
+  if latest.get("status") == "no_data":
+    return latest
+
+  current_signals = latest.get("signals", [])
+  flagged_signals = [s for s in current_signals if is_latest_flagged(s)]
+
+  if not flagged_signals:
+    return {
+      "status": "ok",
+      "checked_snapshots": 0,
+      "anomalies_with_persistence": [],
+      "message": "No anomalies detected in the latest snapshot.",
+    }
+
+  lookback = lookback_days if lookback_days is not None else history_lookback_days
+
+  container_client = _get_blob_service_client().get_container_client(normalized_container)
+  history_blobs = sorted(
+    container_client.list_blobs(name_starts_with=history_prefix),
+    key=lambda b: b.name,
+    reverse=True,
+  )[:lookback]
+
+  history_snapshots = [
+    json.loads(container_client.download_blob(b.name).readall()).get("signals", [])
+    for b in history_blobs
+  ]
+
+  streaks = compute_persistence(current_signals, history_snapshots)
+
+  anomalies_with_persistence = [
+    {
+      "SubAccountId": s.get("SubAccountId"),
+      "SubAccountName": s.get("SubAccountName"),
+      "ServiceName": s.get("ServiceName"),
+      "metric": s.get("metric"),
+      "latest_date": s.get("latest_date"),
+      "latest_value": s.get("latest_value"),
+      "persistence_days": streaks.get(signal_key(s), 1),
+    }
+    for s in flagged_signals
+  ]
+
+  return {
+    "status": "ok",
+    "checked_snapshots": len(history_snapshots),
+    "anomalies_with_persistence": anomalies_with_persistence,
+  }
+
+def _execute_tool(name: str, arguments: dict) -> dict:
+  if name == "get_latest_cost_anomalies":
+    return _get_latest_cost_anomalies_data()
+  if name == "get_cost_anomaly_history":
+    return _get_cost_anomaly_history_data(arguments.get("lookback_days"))
+  return {"status": "error", "message": f"Unknown tool: {name}"}
+
+def _run_agent_turn(openai_client, conversation_id: str) -> str:
+  extra_body = {"agent_reference": {"name": agent_name, "type": "agent_reference"}}
+  response = openai_client.responses.create(conversation=conversation_id, extra_body=extra_body)
+
+  for iteration in range(max_tool_call_iterations):
+    function_calls = [item for item in response.output if item.type == "function_call"]
+    if not function_calls:
+      break
+
+    tool_outputs = []
+    for call in function_calls:
+      arguments = json.loads(call.arguments) if call.arguments else {}
+      result = _execute_tool(call.name, arguments)
+      tool_outputs.append({
+        "type": "function_call_output",
+        "call_id": call.call_id,
+        "output": json.dumps(result),
+      })
+
+    response = openai_client.responses.create(
+      conversation=conversation_id,
+      input=tool_outputs,
+      extra_body=extra_body,
+    )
+  else:
+    logger.error(f"Exceeded max tool-call iterations ({max_tool_call_iterations}) for conversation {conversation_id}.")
+
+  reply_parts = [
+    block.text
+    for item in response.output
+    if item.type == "message"
+    for block in item.content
+    if hasattr(block, "text")
+  ]
+
+  return "\n".join(reply_parts)
+
 @app.function_name(name="GetLatestCostAnomalies")
 @app.route(route="GetLatestCostAnomalies", methods=["GET"], auth_level=func.AuthLevel.FUNCTION)
 def get_latest_cost_anomalies(req: func.HttpRequest) -> func.HttpResponse:
   logger.info("GetLatestCostAnomalies trigger received.")
 
   try:
-    blob_client = _get_blob_service_client().get_blob_client(blob="latest.json", container=normalized_container)
-
-    if not blob_client.exists():
-      return func.HttpResponse(
-        json.dumps({
-          "status": "no_data",
-          "message": "No result available yet — waiting on the next scheduled export."}),
-        status_code=404,
-        mimetype="application/json",
-      )
-
-    raw = blob_client.download_blob().readall()
-    return func.HttpResponse(raw, status_code=200, mimetype="application/json")
+    data = _get_latest_cost_anomalies_data()
+    status_code = 404 if data.get("status") == "no_data" else 200
+    return func.HttpResponse(json.dumps(data), status_code=status_code, mimetype="application/json")
   except Exception as e:
     logger.error(f"The following exception occured while getting the latest results: {e}")
     return func.HttpResponse(
@@ -260,75 +372,72 @@ def get_cost_anomaly_history(req: func.HttpRequest) -> func.HttpResponse:
   logger.info("GetCostAnomalyHistory trigger received.")
 
   try:
-    latest_client = _get_blob_service_client().get_blob_client(blob="latest.json", container=normalized_container)
+    lookback_days = None
+    if "lookback_days" in req.params:
+      try:
+        lookback_days = int(req.params["lookback_days"])
+      except ValueError:
+        lookback_days = None
 
-    if not latest_client.exists():
-      return func.HttpResponse(
-        json.dumps({
-          "status": "no_data",
-          "message": "No result available yet — waiting on the next scheduled export."
-        }),
-        status_code=404,
-        mimetype="application/json",
-      )
-
-    latest = json.loads(latest_client.download_blob().readall())
-    current_signals = latest.get("signals", [])
-    flagged_signals = [s for s in current_signals if is_latest_flagged(s)]
-
-    if not flagged_signals:
-      return func.HttpResponse(
-        json.dumps({
-          "status": "ok",
-          "checked_snapshots": 0,
-          "anomalies_with_persistence": [],
-          "message": "No anomalies detected in the latest snapshot."
-          }),
-        status_code=200,
-        mimetype="application/json",
-      )
-
-    try:
-      lookback = int(req.params.get("lookback_days", history_lookback_days))
-    except ValueError:
-      lookback = history_lookback_days
-
-    container_client = _get_blob_service_client().get_container_client(normalized_container)
-    history_blobs = sorted(
-      container_client.list_blobs(name_starts_with=history_prefix),
-      key=lambda b: b.name,
-      reverse=True,
-    )[:lookback]
-
-    history_snapshots = [
-      json.loads(container_client.download_blob(b.name).readall()).get("signals", [])
-      for b in history_blobs
-    ]
-
-    streaks = compute_persistence(current_signals, history_snapshots)
-
-    anomalies_with_persistence = [
-      {
-        "SubAccountId": s.get("SubAccountId"),
-        "SubAccountName": s.get("SubAccountName"),
-        "ServiceName": s.get("ServiceName"),
-        "metric": s.get("metric"),
-        "latest_date": s.get("latest_date"),
-        "latest_value": s.get("latest_value"),
-        "persistence_days": streaks.get(signal_key(s), 1),
-      }
-      for s in flagged_signals
-    ]
-
-    result = {
-      "status": "ok",
-      "checked_snapshots": len(history_snapshots),
-      "anomalies_with_persistence": anomalies_with_persistence,
-    }
-    return func.HttpResponse(json.dumps(result), status_code=200, mimetype="application/json")
+    data = _get_cost_anomaly_history_data(lookback_days)
+    status_code = 404 if data.get("status") == "no_data" else 200
+    return func.HttpResponse(json.dumps(data), status_code=status_code, mimetype="application/json")
 
   except Exception as e:
     logger.error(f"The following error occured while fetching the cost anomaly history: {e}")
+    return func.HttpResponse(
+      json.dumps({"status": "error", "message": str(e)}),
+      status_code=500,
+      mimetype="application/json",
+    )
+
+@app.function_name(name="ChatWithAgent")
+@app.route(route="ChatWithAgent", methods=["POST"], auth_level=func.AuthLevel.FUNCTION)
+def chat_with_agent(req: func.HttpRequest) -> func.HttpResponse:
+  logger.info("ChatWithAgent trigger received.")
+
+  try:
+    body = req.get_json()
+  except ValueError:
+    return func.HttpResponse(
+      json.dumps({"status": "error", "message": "Request body must be valid JSON."}),
+      status_code=400,
+      mimetype="application/json",
+    )
+
+  message = body.get("message") if isinstance(body, dict) else None
+  if not message:
+    return func.HttpResponse(
+      json.dumps({"status": "error", "message": "'message' is required."}),
+      status_code=400,
+      mimetype="application/json",
+    )
+
+  conversation_id = body.get("conversation_id")
+
+  try:
+    openai_client = _get_openai_client()
+
+    if conversation_id:
+      openai_client.conversations.items.create(
+        conversation_id=conversation_id,
+        items=[{"type": "message", "role": "user", "content": message}],
+      )
+    else:
+      conversation = openai_client.conversations.create(
+        items=[{"type": "message", "role": "user", "content": message}],
+      )
+      conversation_id = conversation.id
+
+    reply = _run_agent_turn(openai_client, conversation_id)
+
+    return func.HttpResponse(
+      json.dumps({"conversation_id": conversation_id, "reply": reply}),
+      status_code=200,
+      mimetype="application/json",
+    )
+  except Exception as e:
+    logger.error(f"The following error occured while chatting with the agent: {e}")
     return func.HttpResponse(
       json.dumps({"status": "error", "message": str(e)}),
       status_code=500,

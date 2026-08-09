@@ -42,26 +42,27 @@ module sr 'modules/supporting_resources.bicep' = {
   scope: az.resourceGroup(resourceGroups[0].name)
 }
 
+module fr 'modules/foundry_resources.bicep' = {
+  dependsOn: [ sr ]
+  name: 'deploy-foundry-resources'
+  params: {
+    foundryAccount: foundryAccount
+  }
+  scope: az.resourceGroup(resourceGroups[0].name)
+}
+
 module far 'modules/function-app_resources.bicep' = {
   dependsOn: [ rgs ]
   name: 'deploy-function-app-resources'
   params: {
     applicationInsightsResourceId: sr.outputs.applicationInsights.resourceId
     dataStorageAccountResourceId: sr.outputs.storageAccounts[0].resourceId
+    foundryProjectEndpoint: fr.outputs.foundry.project.endpoint
     functionApp: functionApp
     serverFarm: serverFarm
     systemStorageAccountResourceId: sr.outputs.storageAccounts[1].resourceId
     userAssignedIdentityResourceId: sr.outputs.userAssignedIdentity.resourceId
     virtualNetworkSubnetResourceId: sr.outputs.virtualNetwork.subnetResourceIds[0]
-  }
-  scope: az.resourceGroup(resourceGroups[0].name)
-}
-
-module fr 'modules/foundry_resources.bicep' = {
-  dependsOn: [ sr ]
-  name: 'deploy-foundry-resources'
-  params: {
-    foundryAccount: foundryAccount
   }
   scope: az.resourceGroup(resourceGroups[0].name)
 }

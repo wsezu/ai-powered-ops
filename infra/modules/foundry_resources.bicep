@@ -24,3 +24,9 @@ module aif 'br/public:avm/ptn/ai-ml/ai-foundry:0.7.0' = {
     tags: foundryAccount.?tags
   }
 }
+
+output foundry object = {
+  project: {
+    endpoint: 'https://${foundryAccount.?aiFoundryConfiguration.?accountName}.services.ai.azure.com/api/projects/${aif.outputs.aiProjectName}'
+  }
+}

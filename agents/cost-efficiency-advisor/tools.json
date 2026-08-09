@@ -1,0 +1,31 @@
+[
+  {
+    "type": "function",
+    "function": {
+      "name": "get_latest_cost_anomalies",
+      "description": "Returns the full current cost signal picture across all tracked subscriptions, services, and metrics (EffectiveCost, BilledCost). Each signal includes its statistics (mean, std_dev, iqr_bounds), the most recent value and date, and a list of any anomalies currently flagged for that signal. Signals with too few data points instead carry a 'note' explaining that statistics aren't available yet. Use this for a broad view of everything being tracked, not just what's currently flagged.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "get_cost_anomaly_history",
+      "description": "Returns only the signals currently flagged as anomalous, each annotated with persistence_days — the number of consecutive snapshots that signal has stayed flagged. Use this to assess how sustained a given anomaly is, rather than treating every flagged signal as equally urgent.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "lookback_days": {
+            "type": "integer",
+            "description": "How many days of history to check when computing persistence. Defaults to the server-side configured value (currently 14) if omitted."
+          }
+        },
+        "required": []
+      }
+    }
+  }
+]

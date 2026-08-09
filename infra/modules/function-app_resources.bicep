@@ -4,6 +4,7 @@ import * as type from '../helpers/types.bicep'
 
 param applicationInsightsResourceId string
 param dataStorageAccountResourceId string
+param foundryProjectEndpoint string
 param functionApp type.functionApp
 param serverFarm type.serverFarm
 param systemStorageAccountResourceId string
@@ -52,6 +53,7 @@ module func 'br/public:avm/res/web/site:0.24.0' = {
           AzureWebJobsStorage__clientId: uami.properties.clientId
           DataStorage__blobServiceUri: 'https://${data_st.name}.blob.${az.environment().suffixes.storage}'
           DataStorage__clientId: uami.properties.clientId
+          FOUNDRY_PROJECT_ENDPOINT: foundryProjectEndpoint
         }
         storageAccountResourceId: system_st.id
         storageAccountUseIdentityAuthentication: true

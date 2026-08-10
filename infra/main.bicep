@@ -45,10 +45,10 @@ module sr 'modules/supporting_resources.bicep' = {
 }
 
 module fr 'modules/foundry_resources.bicep' = {
-  dependsOn: [ sr ]
   name: 'deploy-foundry-resources'
   params: {
     foundryAccount: foundryAccount
+    functionAppUserAssignedIdentityPrincipalId: sr.outputs.userAssignedIdentity.principalId
   }
   scope: az.resourceGroup(resourceGroups[0].name)
 }
@@ -78,3 +78,7 @@ module wfr 'modules/web_frontend_resources.bicep' = {
   }
   scope: az.resourceGroup(resourceGroups[0].name)
 }
+
+output dataStorageAccountName string = sr.outputs.storageAccounts[0].name
+output functionAppName string = far.outputs.functionApp.name
+output staticWebAppName string = wfr.outputs.staticWebApp.name

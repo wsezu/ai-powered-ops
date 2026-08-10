@@ -10,6 +10,7 @@ on:
   workflow_dispatch: {}
 
 permissions:
+  actions: write
   contents: read
   id-token: write
 
@@ -36,4 +37,14 @@ jobs:
             --location "${{ vars.DEPLOYMENT_LOCATION }}" \
             --template-file infra/main.bicep \
             --parameters infra/main.bicepparam \
-            --only-show-errors
+            --query properties.outputs \
+            --only-show-errors \
+            > /tmp/deployment_outputs.json
+
+      - name: Publish resource names as repository variables
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh variable set FUNCTION_APP_NAME --body "$(jq -r '.functionAppName.value' /tmp/deployment_outputs.json)"
+          gh variable set DATA_STORAGE_ACCOUNT_NAME --body "$(jq -r '.dataStorageAccountName.value' /tmp/deployment_outputs.json)"
+          gh variable set STATIC_WEB_APP_NAME --body "$(jq -r '.staticWebAppName.value' /tmp/deployment_outputs.json)"

@@ -26,12 +26,26 @@ jobs:
           tenant-id: ${{ vars.AZURE_TENANT_ID }}
           subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
 
+      - name: Look up Static Web App
+        id: swa
+        run: |
+          SWA_JSON=$(az staticwebapp list \
+            --query "[?name=='${{ vars.STATIC_WEB_APP_NAME }}'] | [0]" \
+            --output json)
+
+          if [ "$SWA_JSON" == "null" ] || [ -z "$SWA_JSON" ]; then
+            echo "::error::Static Web App '${{ vars.STATIC_WEB_APP_NAME }}' was not found in this subscription."
+            exit 1
+          fi
+
+          echo "resource_group=$(echo "$SWA_JSON" | jq -r '.resourceGroup')" >> "$GITHUB_OUTPUT"
+
       - name: Fetch a fresh deployment token
         id: token
         run: |
           TOKEN=$(az staticwebapp secrets list \
-            --name stapp-aiops-prd-weu-001 \
-            --resource-group rg-aiops-prd-weu-001 \
+            --name ${{ vars.STATIC_WEB_APP_NAME }} \
+            --resource-group ${{ steps.swa.outputs.resource_group }} \
             --query "properties.apiKey" \
             --output tsv)
 

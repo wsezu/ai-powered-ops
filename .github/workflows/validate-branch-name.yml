@@ -13,9 +13,9 @@ jobs:
 
     steps:
       - name: Validate branch name
+        env:
+          BRANCH: ${{ github.head_ref }}
         run: |
-          BRANCH="${{ github.head_ref }}"
-
           REGEX="^(feature|bugfix|designfix|hotfix)\/[a-zA-Z0-9._-]+$"
 
           if [[ ! "$BRANCH" =~ $REGEX ]]; then

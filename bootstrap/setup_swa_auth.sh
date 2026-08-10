@@ -60,7 +60,7 @@ done
 : "${KEY_VAULT_NAME:?--key-vault-name is required}"
 
 APP_DISPLAY_NAME="${SWA_NAME}-auth"
-SECRET_NAME="swa-entra-client-secret"
+SECRET_NAME="${SWA_NAME}-entra-client-secret"
 SETTING_NAME="AAD_CLIENT_SECRET"
 
 echo "Looking up Static Web App hostname..."
@@ -93,11 +93,14 @@ else
         --api-permissions e1fe6dd8-ba31-4d61-89e7-88639da4683d=Scope \
         > /dev/null
 
-    echo "Granting the permission (as the signed-in user — sufficient for a single-tenant setup where you administer your own tenant)..."
-    az ad app permission grant \
-        --id "$APP_ID" \
-        --api 00000003-0000-0000-c000-000000000000 \
-        > /dev/null
+    # Deliberately not running `az ad app permission grant` here. That's an
+    # admin pre-consent — it exists only to skip the individual consent
+    # prompt for every user in the tenant. For a single-user app it solves a
+    # problem that doesn't exist, while requiring Global Admin (a privilege
+    # level you may not have, and don't need). Signing in without it still
+    # works: you get an individual consent prompt on first login instead,
+    # which is standard OAuth behavior and grants the same permission to
+    # your own account.
 
     echo "Creating the service principal..."
     az ad sp create --id "$APP_ID" > /dev/null

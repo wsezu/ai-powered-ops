@@ -4,7 +4,7 @@ import * as variable from 'helpers/variables.bicep'
 
 var project = {
   description: 'AI Powered FinOps and SecOps'
-  environment: 'prd'
+  environment: 'dev'
   location: variable.regions.westeurope.location
   name: 'AI powered ops'
   shortName: 'aiops'
@@ -61,17 +61,12 @@ param foundryAccount = {
     }
     roleAssignments: [
       {
-        // Function App's user-assigned managed identity — needed so the ChatWithAgent
-        // endpoint can actually invoke the agent at runtime.
-        // az identity show --name <function-app-uami-name> --resource-group <rg-name> --query principalId --output tsv
-        principalId: '553277dc-fd84-4cde-ac6a-5c22b821f8a9'
-        principalType: 'ServicePrincipal'
-        roleDefinitionId: variable.roleDefinitionId.FoundryUserRoleId
-      }
-      {
         // CI/CD identity (the one GitHub Actions authenticates as via OIDC) — needed
         // so a workflow can create/update the agent definition, rather than that
-        // being a one-off manual step from someone's own machine.
+        // being a one-off manual step from someone's own machine. This one can't be
+        // automated the way the Function App's own identity now is: it's created by
+        // bootstrap.sh, a separate process this Bicep deployment has no visibility
+        // into, so there's no module output to reference here.
         // az identity show --name <ci-cd-identity-name> --resource-group <ci-cd-rg-name> --query principalId --output tsv
         principalId: '97b68fe2-d098-43a8-bb4a-4c1379c174bf'
         principalType: 'ServicePrincipal'

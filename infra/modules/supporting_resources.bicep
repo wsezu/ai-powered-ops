@@ -134,5 +134,5 @@ output applicationInsights object = { name: appi.outputs.name,  resourceId: appi
 output logAnalyticsWorkspace object = { name: log.outputs.name, resourceId: log.outputs.resourceId }
 output networkSecurityGroup object = { name: nsg.outputs.name, resourceId: nsg.outputs.resourceId }
 output storageAccounts array = [for (storageAccount, i) in storageAccounts: { name: st[i].outputs.name, resourceId: st[i].outputs.resourceId }]
-output userAssignedIdentity object = { name: id.outputs.name, resourceId: id.outputs.resourceId }
+output userAssignedIdentity object = { name: id.outputs.name, principalId: id.outputs.principalId, resourceId: id.outputs.resourceId }
 output virtualNetwork object = { name: vnet.outputs.name, resourceId: vnet.outputs.resourceId, subnetResourceIds: vnet.outputs.subnetResourceIds }

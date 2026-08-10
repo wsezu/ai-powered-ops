@@ -142,7 +142,7 @@ param serverFarm = {
 
 param staticWebApp = {
   location: project.location
-  name: 'swa-${resourceSuffix}-001'
+  name: 'stapp-${resourceSuffix}-001'
   sku: 'Standard'
   tags: tags
 }

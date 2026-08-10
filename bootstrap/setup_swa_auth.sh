@@ -136,10 +136,30 @@ KEY_VAULT_URI=$(az keyvault show --name "$KEY_VAULT_NAME" --query properties.vau
 KEY_VAULT_REFERENCE="@Microsoft.KeyVault(SecretUri=${KEY_VAULT_URI}secrets/${SECRET_NAME}/)"
 
 echo "Setting the Static Web App's application settings (client ID plain, secret via Key Vault reference)..."
-az staticwebapp appsettings set \
-    --name "$SWA_NAME" \
-    --setting-names "AAD_CLIENT_ID=${APP_ID}" "${SETTING_NAME}=${KEY_VAULT_REFERENCE}" \
+# Deliberately NOT using `az staticwebapp appsettings set` here — it has two
+# separate, documented Azure CLI bugs that both apply directly to this exact
+# call: it truncates any value after its first "=" sign (our Key Vault
+# reference has one inside it), and when given multiple key=value pairs in
+# one call, silently applies only the last one. Both are real, open issues
+# on Azure/azure-cli and Azure/static-web-apps. Calling the REST API directly
+# with a properly-constructed JSON body sidesteps both — there's no
+# key=value string parsing involved at all.
+SUBSCRIPTION_ID=$(az account show --query id --output tsv)
+
+jq -n \
+    --arg secretSettingName "$SETTING_NAME" \
+    --arg clientId "$APP_ID" \
+    --arg secretRef "$KEY_VAULT_REFERENCE" \
+    '{properties: {AAD_CLIENT_ID: $clientId, ($secretSettingName): $secretRef}}' \
+    > /tmp/swa-appsettings.json
+
+az rest \
+    --method put \
+    --uri "https://management.azure.com/subscriptions/${SUBSCRIPTION_ID}/resourceGroups/${RESOURCE_GROUP}/providers/Microsoft.Web/staticSites/${SWA_NAME}/config/appsettings?api-version=2025-03-01" \
+    --body @/tmp/swa-appsettings.json \
     > /dev/null
+
+rm -f /tmp/swa-appsettings.json
 
 TENANT_ID=$(az account show --query tenantId --output tsv)
 

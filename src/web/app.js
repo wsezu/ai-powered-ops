@@ -9,7 +9,20 @@ const CONVERSATION_STORAGE_KEY = "costAdvisorConversationId";
 function addMessage(role, text) {
   const el = document.createElement("div");
   el.className = `message ${role}`;
-  el.textContent = text;
+
+  if (role === "assistant") {
+    // Assistant replies are Markdown by design (the agent's instructions ask
+    // for structured, formatted output). Render it properly rather than
+    // showing literal ## and ** characters — but since this goes through
+    // innerHTML, sanitize first. The agent's replies are ultimately built
+    // from Azure resource data (subscription/service names, cost figures),
+    // not arbitrary user input, but sanitizing costs nothing and removes
+    // any doubt.
+    el.innerHTML = DOMPurify.sanitize(marked.parse(text));
+  } else {
+    el.textContent = text;
+  }
+
   messagesEl.appendChild(el);
   messagesEl.scrollTop = messagesEl.scrollHeight;
   return el;

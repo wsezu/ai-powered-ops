@@ -89,6 +89,47 @@ main {
   border: 1px solid var(--border);
 }
 
+.message.assistant h1,
+.message.assistant h2,
+.message.assistant h3 {
+  font-size: 1rem;
+  margin: 0.9rem 0 0.4rem;
+}
+
+.message.assistant h1:first-child,
+.message.assistant h2:first-child,
+.message.assistant h3:first-child,
+.message.assistant p:first-child {
+  margin-top: 0;
+}
+
+.message.assistant p {
+  margin: 0.5rem 0;
+}
+
+.message.assistant ul,
+.message.assistant ol {
+  margin: 0.4rem 0;
+  padding-left: 1.4rem;
+}
+
+.message.assistant li {
+  margin: 0.2rem 0;
+}
+
+.message.assistant code {
+  background: var(--bg);
+  border-radius: 4px;
+  padding: 0.1rem 0.3rem;
+  font-size: 0.85em;
+}
+
+.message.assistant hr {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 0.75rem 0;
+}
+
 .message.system {
   align-self: center;
   color: var(--text-muted);

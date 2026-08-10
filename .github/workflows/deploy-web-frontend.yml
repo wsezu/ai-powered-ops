@@ -30,7 +30,7 @@ jobs:
         id: token
         run: |
           TOKEN=$(az staticwebapp secrets list \
-            --name swa-aiops-prd-weu-001 \
+            --name stapp-aiops-prd-weu-001 \
             --resource-group rg-aiops-prd-weu-001 \
             --query "properties.apiKey" \
             --output tsv)

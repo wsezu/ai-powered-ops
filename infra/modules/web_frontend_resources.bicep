@@ -37,6 +37,21 @@ module kv 'br/public:avm/res/key-vault/vault:0.14.0' = {
     enableTelemetry: true
     location: resourceGroup().location
     name: keyVault.name
+    // Deliberately open, not a leftover default: Key Vault references (the
+    // @Microsoft.KeyVault(...) syntax used in the Static Web App's app
+    // settings) cannot resolve secrets from a network-restricted vault —
+    // this is a documented Microsoft limitation, not something "Allow
+    // trusted Microsoft services" or an IP allowlist works around. App
+    // Service-family resources (which Static Web Apps' auth resolution is
+    // built on) are explicitly excluded from the trusted-services bypass
+    // for anything beyond certificate operations. RBAC — Key Vault Secrets
+    // User/Officer, already scoped to specific principals above and in
+    // main.bicepparam — is the real access control for this vault; network
+    // restriction was never going to be compatible with what it's for.
+    networkAcls: {
+      bypass: 'AzureServices'
+      defaultAction: 'Allow'
+    }
     roleAssignments: concat(
       [
         {

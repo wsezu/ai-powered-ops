@@ -1,3 +1,4 @@
+import base64
 import io
 import json
 import logging
@@ -392,9 +393,39 @@ def get_cost_anomaly_history(req: func.HttpRequest) -> func.HttpResponse:
     )
 
 @app.function_name(name="ChatWithAgent")
-@app.route(route="ChatWithAgent", methods=["POST"], auth_level=func.AuthLevel.FUNCTION)
+@app.route(route="ChatWithAgent", methods=["POST"], auth_level=func.AuthLevel.ANONYMOUS)
 def chat_with_agent(req: func.HttpRequest) -> func.HttpResponse:
   logger.info("ChatWithAgent trigger received.")
+
+  # Defense in depth: the Static Web App's linked-backend authentication
+  # (confirmed working — direct anonymous access gets rejected with a
+  # platform-level EasyAuth error before this code ever runs) is what
+  # actually gates access here, not this function's own auth_level. This
+  # check exists so the application doesn't rely solely on an external
+  # platform configuration it can't see or verify at runtime — if this
+  # header is ever missing (misconfiguration, a future platform change,
+  # someone removing the linked identity provider), this still refuses
+  # the request rather than silently trusting the caller.
+  principal_header = req.headers.get("x-ms-client-principal")
+  if not principal_header:
+    logger.error("ChatWithAgent called without an x-ms-client-principal header — rejecting.")
+    return func.HttpResponse(
+      json.dumps({"status": "error", "message": "Unauthorized."}),
+      status_code=401,
+      mimetype="application/json",
+    )
+
+  try:
+    principal = json.loads(base64.b64decode(principal_header))
+    if not principal.get("userId"):
+      raise ValueError("client principal is missing userId")
+  except (ValueError, TypeError) as e:
+    logger.error(f"ChatWithAgent received an unparseable x-ms-client-principal header: {e}")
+    return func.HttpResponse(
+      json.dumps({"status": "error", "message": "Unauthorized."}),
+      status_code=401,
+      mimetype="application/json",
+    )
 
   try:
     body = req.get_json()

@@ -42,7 +42,7 @@ param keyVault = {
       // Subscription Owner/Contributor does NOT grant Key Vault data access under
       // the RBAC permission model — this is a separate, explicit grant.
       // az ad signed-in-user show --query id --output tsv
-      principalId: 'REPLACE_WITH_YOUR_OWN_ENTRA_OBJECT_ID'
+      principalId: 'ef60abdc-419e-4d06-b37b-41a8975eeffe'
       principalType: 'User'
       roleDefinitionId: variable.roleDefinitionId.KeyVaultSecretsOfficerRoleId
     }

@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Cost Efficiency Advisor</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header>
+    <h1>Cost Efficiency Advisor</h1>
+    <div id="user-info">
+      <span id="user-name"></span>
+      <a href="/logout" id="logout-link">Sign out</a>
+    </div>
+  </header>
+
+  <main>
+    <div id="messages" aria-live="polite"></div>
+
+    <form id="chat-form">
+      <textarea
+        id="message-input"
+        placeholder="Ask about current cost anomalies, trade-offs, or what to prioritize..."
+        rows="2"
+        required
+      ></textarea>
+      <button type="submit" id="send-button">Send</button>
+    </form>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>

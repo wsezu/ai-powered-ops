@@ -1,0 +1,129 @@
+:root {
+  --accent: #0078d4;
+  --bg: #f5f6f7;
+  --panel: #ffffff;
+  --border: #e1e4e8;
+  --text: #1b1f23;
+  --text-muted: #6a737d;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+}
+
+header {
+  background: var(--panel);
+  border-bottom: 1px solid var(--border);
+  padding: 0.75rem 1.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+header h1 {
+  font-size: 1.1rem;
+  margin: 0;
+  font-weight: 600;
+}
+
+#user-info {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+#logout-link {
+  color: var(--accent);
+  text-decoration: none;
+}
+
+main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  max-width: 720px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 1rem;
+  overflow: hidden;
+}
+
+#messages {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding-bottom: 1rem;
+}
+
+.message {
+  max-width: 85%;
+  padding: 0.6rem 0.9rem;
+  border-radius: 10px;
+  line-height: 1.45;
+  white-space: pre-wrap;
+}
+
+.message.user {
+  align-self: flex-end;
+  background: var(--accent);
+  color: white;
+}
+
+.message.assistant {
+  align-self: flex-start;
+  background: var(--panel);
+  border: 1px solid var(--border);
+}
+
+.message.system {
+  align-self: center;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  font-style: italic;
+}
+
+#chat-form {
+  display: flex;
+  gap: 0.5rem;
+  border-top: 1px solid var(--border);
+  padding-top: 1rem;
+}
+
+#message-input {
+  flex: 1;
+  resize: none;
+  padding: 0.6rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-family: inherit;
+  font-size: 0.95rem;
+}
+
+#send-button {
+  background: var(--accent);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 0 1.25rem;
+  font-size: 0.95rem;
+  cursor: pointer;
+}
+
+#send-button:disabled {
+  opacity: 0.6;
+  cursor: default;
+}

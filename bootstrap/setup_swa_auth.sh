@@ -103,6 +103,11 @@ else
     az ad sp create --id "$APP_ID" > /dev/null
 fi
 
+echo "Enabling ID token issuance — required for Static Web Apps' EasyAuth-based"
+echo "sign-in flow to complete; without it, login silently loops back on itself"
+echo "after you select an account, rather than showing an explicit error."
+az ad app update --id "$APP_ID" --enable-id-token-issuance true
+
 echo "Generating a client secret..."
 if [ "$APPEND_SECRET" = true ]; then
     CLIENT_SECRET=$(az ad app credential reset \

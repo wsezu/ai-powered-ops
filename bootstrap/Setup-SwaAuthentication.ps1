@@ -16,7 +16,7 @@ param(
 $ErrorActionPreference = 'Stop'
 
 # Verify prerequisites
-foreach ($cmd in 'gh', 'az') {
+foreach ($cmd in 'az') {
     if (-not (Get-Command $cmd -ErrorAction SilentlyContinue)) {
         throw "$cmd is required."
     }
@@ -43,6 +43,7 @@ if($null -ne $existingAppRegId) {
     az ad app permission grant --id $appRegId --api 00000003-0000-0000-c000-000000000000
     Write-Output 'Creating the service principal for the app registration'
     az ad sp create --id $appRegId
+    az ad app update --id $appRegId --enable-id-token-issuance true
 }
 
 if($AppendSecret) {

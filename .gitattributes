@@ -1,0 +1,10 @@
+# Let Git decide text vs. binary sensibly for everything by default.
+* text=auto
+
+# Shell scripts must always use LF. A CRLF line ending corrupts the shebang
+# line itself (`#!/usr/bin/env bash` becomes `#!/usr/bin/env bash\r`, and env
+# then looks for a program literally named "bash\r") — this isn't a style
+# preference, CRLF genuinely breaks these scripts on execution. Forcing eol=lf
+# here means this stays correct on checkout regardless of core.autocrlf on
+# whichever machine — Windows included — someone's cloning this repo on.
+*.sh text eol=lf

@@ -9,6 +9,7 @@ param keyVault type.keyVault
 param logAnalyticsWorkspace type.logAnalyticsWorkspace
 param networkSecurityGroup type.networkSecurityGroup
 param resourceGroups type.resourceGroup[]
+param securityReaderSubscriptionIds string[]
 param serverFarm type.serverFarm
 param staticWebApp type.staticWebApp
 param storageAccounts type.storageAccount[]
@@ -77,6 +78,14 @@ module wfr 'modules/web_frontend_resources.bicep' = {
     staticWebApp: staticWebApp
   }
   scope: az.resourceGroup(resourceGroups[0].name)
+}
+
+module srra 'modules/security_reader_role_assignments.bicep' = {
+  name: 'deploy-security-reader-role-assignments'
+  params: {
+    principalId: sr.outputs.userAssignedIdentity.principalId
+    subscriptionIds: securityReaderSubscriptionIds
+  }
 }
 
 output dataStorageAccountName string = sr.outputs.storageAccounts[0].name

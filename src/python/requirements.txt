@@ -2,6 +2,7 @@ azure-ai-projects~=2.4.0
 azure-core~=1.41
 azure-functions~=1.24
 azure-identity~=1.25
+azure-mgmt-resourcegraph~=8.0.1
 azure-storage-blob~=12.30
 pandas~=3.0
 pyarrow~=25.0

@@ -18,6 +18,8 @@ from azure.core.exceptions import (
   ResourceNotFoundError,
 )
 from azure.identity import DefaultAzureCredential
+from azure.mgmt.resourcegraph import ResourceGraphClient
+from azure.mgmt.resourcegraph.models import QueryRequest
 from azure.storage.blob import BlobServiceClient
 
 logger = logging.getLogger(__name__)
@@ -48,6 +50,22 @@ def _get_openai_client():
     credential = DefaultAzureCredential(managed_identity_client_id=client_id) if client_id else DefaultAzureCredential()
     _project_client = AIProjectClient(endpoint=endpoint, credential=credential)
   return _project_client.get_openai_client()
+
+_resource_graph_client: ResourceGraphClient | None = None
+
+def _get_resource_graph_client() -> ResourceGraphClient:
+  global _resource_graph_client
+  if _resource_graph_client is None:
+    # Same identity as everything else. Deliberately not passing an explicit
+    # subscriptions list to QueryRequest below — Resource Graph defaults to
+    # whatever subscriptions the calling identity actually has access to,
+    # which is already exactly the four Security Reader was granted on. That
+    # means the subscription list only has to be correct in one place (the
+    # RBAC grants in main.bicepparam), not duplicated here too.
+    client_id = os.environ.get("DataStorage__clientId")
+    credential = DefaultAzureCredential(managed_identity_client_id=client_id) if client_id else DefaultAzureCredential()
+    _resource_graph_client = ResourceGraphClient(credential=credential)
+  return _resource_graph_client
 
 _blob_service_client: BlobServiceClient | None = None
 
@@ -304,11 +322,39 @@ def _get_cost_anomaly_history_data(lookback_days: int | None = None) -> dict:
     "anomalies_with_persistence": anomalies_with_persistence,
   }
 
+def _get_security_recommendations_data() -> dict:
+  query = """
+    SecurityResources
+    | where type == 'microsoft.security/assessments'
+    | where properties.status.code == 'Unhealthy'
+    | project
+        subscriptionId,
+        recommendationName = tostring(properties.displayName),
+        severity = tostring(properties.metadata.severity),
+        category = properties.metadata.categories
+  """.strip()
+
+  try:
+    response = _get_resource_graph_client().resources(QueryRequest(query=query))
+  except Exception as e:
+    logger.error(f"Resource Graph query for security recommendations failed: {e}")
+    return {"status": "error", "message": "Could not retrieve security recommendations."}
+
+  recommendations = response.data or []
+
+  return {
+    "status": "ok",
+    "recommendation_count": len(recommendations),
+    "recommendations": recommendations,
+  }
+
 def _execute_tool(name: str, arguments: dict) -> dict:
   if name == "get_latest_cost_anomalies":
     return _get_latest_cost_anomalies_data()
   if name == "get_cost_anomaly_history":
     return _get_cost_anomaly_history_data(arguments.get("lookback_days"))
+  if name == "get_security_recommendations":
+    return _get_security_recommendations_data()
   return {"status": "error", "message": f"Unknown tool: {name}"}
 
 def _run_agent_turn(openai_client, conversation_id: str) -> str:

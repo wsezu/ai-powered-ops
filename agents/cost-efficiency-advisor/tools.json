@@ -29,5 +29,18 @@
         "additionalProperties": false
       }
     }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "get_security_recommendations",
+      "description": "Returns currently open (unhealthy) Microsoft Defender for Cloud security recommendations across every subscription this tool has visibility into. Each recommendation includes which subscription it applies to, its name, severity, and category. Recommendations that are already resolved are not included. Use this to ground the security/risk side of a trade-off in actual posture data rather than general assumption.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      }
+    }
   }
 ]

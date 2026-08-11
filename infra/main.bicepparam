@@ -130,6 +130,13 @@ param resourceGroups = [
   }
 ]
 
+param securityReaderSubscriptionIds = [
+  'a525b25c-14fc-42cb-a55f-9dedea6bffaa' // fz-lz-online-aiops-prd-001
+  '63b1a2c9-8249-4e7a-9bc1-994aee9ffd88' // fz-plat-net-shared-prd-001
+  '1d5d84c6-dd29-4db6-a016-2becc7d0b8d2' // fz-plat-id-shared-prd-001
+  '399904d2-2885-43a1-b231-a32daf1198cf' // fz-plat-mgmt-shared-prd-001
+]
+
 param serverFarm = {
   name: 'asp-${resourceSuffix}-001'
   tags: tags

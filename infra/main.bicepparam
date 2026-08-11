@@ -4,7 +4,7 @@ import * as variable from 'helpers/variables.bicep'
 
 var project = {
   description: 'AI Powered FinOps and SecOps'
-  environment: 'dev'
+  environment: 'prd'
   location: variable.regions.westeurope.location
   name: 'AI powered ops'
   shortName: 'aiops'

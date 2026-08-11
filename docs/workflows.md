@@ -2,7 +2,7 @@
 
 ## Overview
 
-CI/CD automation is defined in `.github/workflows/`. There are **eight** workflows.
+CI/CD automation is defined in `.github/workflows/`. There are **nine** workflows.
 
 ## Workflow summary
 
@@ -12,7 +12,8 @@ CI/CD automation is defined in `.github/workflows/`. There are **eight** workflo
 | `bicep-lint.yml` | PR to `main` when `infra/**` changes | Lint + build Bicep and parameter files |
 | `deploy-azure-resources.yml` | Push to `main` when `infra/**` changes | Deploy subscription-scoped infrastructure |
 | `deploy-event-grids.yml` | Push to `main` when `infra/modules/event_grids.bicep` changes | Deploy Event Grid system topic + subscription wiring |
-| `deploy-function-app.yml` | Push to `main` when `src/python/**` changes | Deploy Function App package |
+| `deploy-function-app-apps.yml` | Push to `main` when `src/python/**` changes | Deploy Function App package |
+| `deploy-web-frontend.yml` | Push to `main` when `src/web/**` changes | Deploy the static web frontend to the Static Web App |
 | `python-lint.yml` | PR to `main` when `*.py` changes | Run Ruff |
 | `security-scan.yml` | Push/PR when `*.py` changes | Run Bandit + pip-audit |
 | `secret-scan.yml` | Every push/PR | Run Gitleaks against full history |
@@ -25,6 +26,7 @@ CI/CD automation is defined in `.github/workflows/`. There are **eight** workflo
 
 - Regex: `^(feature|bugfix|designfix|hotfix)\/[a-zA-Z0-9._-]+$`
 - Blocks PR on mismatch.
+- The branch name is passed through an environment variable (`env: BRANCH: ${{ github.head_ref }}`), not substituted directly into the inline script — `github.head_ref` is attacker-controllable on a PR from a fork, so direct substitution is a real script-injection vector, not just a style nit.
 
 ### `bicep-lint.yml`
 
@@ -45,39 +47,50 @@ CI/CD automation is defined in `.github/workflows/`. There are **eight** workflo
   - `vars.AZURE_SUBSCRIPTION_ID`
 - Uses `vars.DEPLOYMENT_LOCATION` for the deployment region.
 - Exposes `AZURE_SUBSCRIPTION_ID` as runtime env var for Bicep param resolution.
-- Runs subscription deployment of `infra/main.bicep` with `infra/main.bicepparam`.
+- Runs subscription deployment of `infra/main.bicep` with `infra/main.bicepparam`, capturing the deployment's outputs.
+- Surfaces `functionAppName`, `dataStorageAccountName`, and `staticWebAppName` as a `::notice::` annotation in the run summary — **it deliberately does not write these to repository variables automatically.** `GITHUB_TOKEN` cannot write repository Variables under any `permissions:` grant — that scope simply doesn't exist for the auto-generated token, by design, to stop a workflow from being able to rewrite the credentials that control its own execution. The documented workaround (a Personal Access Token) would need write access to this repo's variables, including the ones that determine which Azure identity every other workflow authenticates as — a materially riskier credential to hold than the convenience of automating three occasional manual updates is worth. If any of the three names change (e.g. after switching `project.environment` or region), update the matching repository variable manually.
 
 ### `deploy-event-grids.yml`
 
 - Trigger: pushes to `main` affecting `infra/modules/event_grids.bicep`
 - Uses OIDC Azure login with **repository variables** (`vars.*`)
-- Looks up:
-  - Function App `func-aiops-prd-weu-001`
-  - Data storage account `stv2aiopsprdweu001` in the same resource group
+- Looks up, by name (not hardcoded resource group — resolved dynamically via `az functionapp list` / `az storage account show`):
+  - Function App (`vars.FUNCTION_APP_NAME`)
+  - Data storage account (`vars.DATA_STORAGE_ACCOUNT_NAME`) in the same resource group
+- Fails fast with a clear error if either isn't found, rather than letting the Bicep deployment fail with a less obvious message
 - Runs resource-group deployment of `infra/modules/event_grids.bicep` with:
   - `functionAppResourceId`
   - `storageAccountResourceId`
+- Must run *after* the Function App code is actually deployed — the Event Grid destination references a specific function (`BlobCreatedEventGridFunction`), and creating the subscription before that function exists as a deployed sub-resource fails with "Destination endpoint not found."
 
 ### `deploy-function-app-apps.yml`
 
 - Trigger: pushes to `main` affecting `src/python/**`
 - Uses OIDC Azure login with **repository variables** (`vars.*`)
 - Deploys with `Azure/functions-action@v1`:
-  - `app-name: func-aiops-prd-weu-001`
+  - `app-name: ${{ vars.FUNCTION_APP_NAME }}`
   - `package: src/python`
   - `sku: flexconsumption`
   - `remote-build: true`
 
+### `deploy-web-frontend.yml`
+
+- Trigger: pushes to `main` affecting `src/web/**`
+- Uses OIDC Azure login with **repository variables** (`vars.*`)
+- Looks up the Static Web App by name (`vars.STATIC_WEB_APP_NAME`) to resolve its resource group dynamically — same pattern as `deploy-event-grids.yml`
+- Fetches a **fresh deployment token at runtime** (`az staticwebapp secrets list`, authenticated via the same OIDC login) rather than storing one as a persisted secret — masked immediately via `::add-mask::`, used once, never written anywhere
+- Deploys via `Azure/static-web-apps-deploy@v1` with `app_location: src/web`, `skip_app_build: true`, no `api_location` (the app uses the linked backend, not SWA's own managed Functions)
+
 ### `python-lint.yml`
 
 - Python 3.12
-- Installs Ruff
+- Installs Ruff, **pinned** (`ruff==0.16.1`) — an earlier run of this workflow failed with zero code changes because ruff's own default rule selection expanded between runs, newly flagging pre-existing code. Pinning the version, and adding an explicit `pyproject.toml` documenting *why* one rule (`BLE001`) is deliberately disabled, prevents that recurring.
 - Runs `ruff check .`
 
 ### `security-scan.yml`
 
 - Python 3.12
-- Installs `bandit`, `pip-audit`, and `src/python/requirements.txt`
+- Installs `bandit` and `pip-audit`, both pinned (`bandit~=1.9.4`, `pip-audit~=2.10.1`) for the same reason as the Ruff pin above, plus `src/python/requirements.txt`
 - Runs:
   - `bandit -r . -x .venv,venv,.git,__pycache__`
   - `pip-audit`
@@ -91,16 +104,17 @@ CI/CD automation is defined in `.github/workflows/`. There are **eight** workflo
 
 ## OIDC and GitHub configuration
 
-All Azure-authenticating workflows (`bicep-lint.yml`, `deploy-azure-resources.yml`, `deploy-event-grids.yml`, `deploy-function-app-apps.yml`) read from the same **repository variables**:
+All Azure-authenticating workflows (`bicep-lint.yml`, `deploy-azure-resources.yml`, `deploy-event-grids.yml`, `deploy-function-app-apps.yml`, `deploy-web-frontend.yml`) read from the same **repository variables**:
 
 - `AZURE_CLIENT_ID`
 - `AZURE_TENANT_ID`
 - `AZURE_SUBSCRIPTION_ID`
-- `DEPLOYMENT_LOCATION` (used by infrastructure deployment)
-- `FUNCTION_APP_NAME` (used by function-app deployment and Event Grid wiring)
-- `DATA_STORAGE_ACCOUNT_NAME` (used by Event Grid wiring)
+- `DEPLOYMENT_LOCATION` — used by infrastructure deployment; genuinely can't be auto-published the way the three below can, since it's needed *before* the deployment starts, not produced by it
+- `FUNCTION_APP_NAME` — used by function-app deployment, Event Grid wiring
+- `DATA_STORAGE_ACCOUNT_NAME` — used by Event Grid wiring
+- `STATIC_WEB_APP_NAME` — used by the web frontend deployment
 
-None of these three values are sensitive under OIDC — the actual trust boundary is the federated credential's `subject` claim, not the secrecy of a client ID, tenant ID, or subscription ID.
+None of these values are sensitive under OIDC — the actual trust boundary is the federated credential's `subject` claim, not the secrecy of a client ID, tenant ID, or subscription ID.
 
 The OIDC identity must have federated credentials for:
 

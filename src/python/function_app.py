@@ -438,6 +438,24 @@ def get_cost_anomaly_history(req: func.HttpRequest) -> func.HttpResponse:
       mimetype="application/json",
     )
 
+@app.function_name(name="GetSecurityRecommendations")
+@app.route(route="GetSecurityRecommendations", methods=["GET"], auth_level=func.AuthLevel.FUNCTION)
+def get_security_recommendations(req: func.HttpRequest) -> func.HttpResponse:
+  logger.info("GetSecurityRecommendations trigger received.")
+
+  try:
+    data = _get_security_recommendations_data()
+    status_code = 500 if data.get("status") == "error" else 200
+    return func.HttpResponse(json.dumps(data), status_code=status_code, mimetype="application/json")
+
+  except Exception as e:
+    logger.error(f"The following error occured while fetching security recommendations: {e}")
+    return func.HttpResponse(
+      json.dumps({"status": "error", "message": str(e)}),
+      status_code=500,
+      mimetype="application/json",
+    )
+
 @app.function_name(name="ChatWithAgent")
 @app.route(route="ChatWithAgent", methods=["POST"], auth_level=func.AuthLevel.ANONYMOUS)
 def chat_with_agent(req: func.HttpRequest) -> func.HttpResponse:

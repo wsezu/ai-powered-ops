@@ -62,6 +62,18 @@ resource existingFoundryAccount 'Microsoft.CognitiveServices/accounts@2025-04-01
   name: foundryAccount.?aiFoundryConfiguration.?accountName!
 }
 
+// The project itself — not the account — has its own, separate managed identity.
+// The AVM module's own outputs never expose its principalId (confirmed by reading
+// the module's source directly, not assumed), even though the module uses that
+// exact identity internally for its own Cosmos/Storage/AI Search connections. This
+// existing reference is the only way to get at it. API version matches what the
+// module itself uses for this resource type, not the older one used for the
+// account/connections resources above.
+resource existingFoundryProject 'Microsoft.CognitiveServices/accounts/projects@2025-12-01' existing = {
+  name: foundryAccount.?aiFoundryConfiguration.?project.?name!
+  parent: existingFoundryAccount
+}
+
 // Server-side agent tracing activates automatically the moment this connection
 // exists — no code changes anywhere, confirmed specifically for prompt agents
 // (which cost-efficiency-advisor is). The connection string is read directly from
@@ -86,6 +98,23 @@ resource appInsightsConnection 'Microsoft.CognitiveServices/accounts/connections
   dependsOn: [
     aif
   ]
+}
+
+// The connection alone isn't enough — the Foundry portal's own setup flow flags
+// this explicitly ("Setup incomplete: Assign the Foundry project's managed
+// identity the Reader role on Application Insights to access traces"). The
+// connection handles the agent writing traces out; this is what lets the
+// project's identity read them back for display. Scoped to the App Insights
+// resource itself via the role assignment's own `scope`, not this module's
+// default resource-group scope.
+resource appInsightsReaderRoleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+  name: guid(existingAppInsights.id, existingFoundryProject.id, variable.roleDefinitionId.ReaderRoleId)
+  scope: existingAppInsights
+  properties: {
+    principalId: existingFoundryProject.identity.principalId
+    principalType: 'ServicePrincipal'
+    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', variable.roleDefinitionId.ReaderRoleId)
+  }
 }
 
 output foundry object = {

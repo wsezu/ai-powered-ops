@@ -27,6 +27,7 @@ var roleDefinitionId = {
   FoundryUserRoleId: '53ca6127-db72-4b80-b1b0-d745d6d5456d'
   KeyVaultSecretsOfficerRoleId: 'b86a8fe4-44ce-4948-aee5-eccb2c155cd7'
   KeyVaultSecretsUserRoleId: '4633458b-17de-408a-b874-0445c86b69e6'
+  ReaderRoleId: 'acdd72a7-3385-48ef-bd42-f606fba81ae7'
   SecurityReaderRoleId: '39bc4728-0917-49c7-9d2c-d95423bc2eb4'
   StorageBlobDataContributor: 'ba92f5b4-2d11-453d-a403-e96b0029c9fe'
   StorageBlobDataOwner: 'b7e6dc6d-f1e8-4753-8033-0f276bb0955b'

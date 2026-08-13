@@ -89,5 +89,6 @@ module srra 'modules/security_reader_role_assignments.bicep' = {
 }
 
 output dataStorageAccountName string = sr.outputs.storageAccounts[0].name
+output foundryProjectEndpoint string = fr.outputs.foundry.project.endpoint
 output functionAppName string = far.outputs.functionApp.name
 output staticWebAppName string = wfr.outputs.staticWebApp.name

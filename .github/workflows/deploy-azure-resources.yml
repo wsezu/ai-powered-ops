@@ -45,6 +45,7 @@ jobs:
           FUNCTION_APP_NAME=$(jq -r '.functionAppName.value' /tmp/deployment_outputs.json)
           DATA_STORAGE_ACCOUNT_NAME=$(jq -r '.dataStorageAccountName.value' /tmp/deployment_outputs.json)
           STATIC_WEB_APP_NAME=$(jq -r '.staticWebAppName.value' /tmp/deployment_outputs.json)
+          FOUNDRY_PROJECT_ENDPOINT=$(jq -r '.foundryProjectEndpoint.value' /tmp/deployment_outputs.json)
 
           # GITHUB_TOKEN can never write repository variables, regardless of
           # what's granted under `permissions:` — that scope genuinely doesn't
@@ -54,9 +55,9 @@ jobs:
           # Token capable of writing repo variables — including
           # AZURE_CLIENT_ID/AZURE_TENANT_ID/AZURE_SUBSCRIPTION_ID, the values
           # that determine which Azure identity every workflow in this repo
-          # authenticates as. That's a worse trade than three manual updates
+          # authenticates as. That's a worse trade than four manual updates
           # on the rare occasion these names actually change, so this step
           # only surfaces the current values clearly instead of writing them.
-          echo "::notice title=Resource names from this deployment::FUNCTION_APP_NAME=$FUNCTION_APP_NAME | DATA_STORAGE_ACCOUNT_NAME=$DATA_STORAGE_ACCOUNT_NAME | STATIC_WEB_APP_NAME=$STATIC_WEB_APP_NAME"
+          echo "::notice title=Resource names from this deployment::FUNCTION_APP_NAME=$FUNCTION_APP_NAME | DATA_STORAGE_ACCOUNT_NAME=$DATA_STORAGE_ACCOUNT_NAME | STATIC_WEB_APP_NAME=$STATIC_WEB_APP_NAME | FOUNDRY_PROJECT_ENDPOINT=$FOUNDRY_PROJECT_ENDPOINT"
 
           echo "If any of these changed (e.g. after switching environments or regions), update the matching repository variable under Settings > Secrets and variables > Actions > Variables."

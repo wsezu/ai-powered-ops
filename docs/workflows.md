@@ -2,7 +2,7 @@
 
 ## Overview
 
-CI/CD automation is defined in `.github/workflows/`. There are **nine** workflows.
+CI/CD automation is defined in `.github/workflows/`. There are **ten** workflows.
 
 ## Workflow summary
 
@@ -11,6 +11,7 @@ CI/CD automation is defined in `.github/workflows/`. There are **nine** workflow
 | `validate-branch-name.yml` | PR opened/synchronized/reopened | Enforce branch naming convention |
 | `bicep-lint.yml` | PR to `main` when `infra/**` changes | Lint + build Bicep and parameter files |
 | `deploy-azure-resources.yml` | Push to `main` when `infra/**` changes | Deploy subscription-scoped infrastructure |
+| `deploy-agent.yml` | Push to `main` when `agents/cost-efficiency-advisor/**` changes | Create/update the Foundry agent definition |
 | `deploy-event-grids.yml` | Push to `main` when `infra/modules/event_grids.bicep` changes | Deploy Event Grid system topic + subscription wiring |
 | `deploy-function-app-apps.yml` | Push to `main` when `src/python/**` changes | Deploy Function App package |
 | `deploy-web-frontend.yml` | Push to `main` when `src/web/**` changes | Deploy the static web frontend to the Static Web App |
@@ -49,6 +50,15 @@ CI/CD automation is defined in `.github/workflows/`. There are **nine** workflow
 - Exposes `AZURE_SUBSCRIPTION_ID` as runtime env var for Bicep param resolution.
 - Runs subscription deployment of `infra/main.bicep` with `infra/main.bicepparam`, capturing the deployment's outputs.
 - Surfaces `functionAppName`, `dataStorageAccountName`, and `staticWebAppName` as a `::notice::` annotation in the run summary — **it deliberately does not write these to repository variables automatically.** `GITHUB_TOKEN` cannot write repository Variables under any `permissions:` grant — that scope simply doesn't exist for the auto-generated token, by design, to stop a workflow from being able to rewrite the credentials that control its own execution. The documented workaround (a Personal Access Token) would need write access to this repo's variables, including the ones that determine which Azure identity every other workflow authenticates as — a materially riskier credential to hold than the convenience of automating three occasional manual updates is worth. If any of the three names change (e.g. after switching `project.environment` or region), update the matching repository variable manually.
+
+### `deploy-agent.yml`
+
+- Trigger: pushes to `main` affecting `agents/cost-efficiency-advisor/**`
+- Uses OIDC Azure login with **repository variables** (`vars.*`)
+- Installs `agents/cost-efficiency-advisor/requirements.txt`, then runs `setup_agent.py` with `FOUNDRY_PROJECT_ENDPOINT` set from `vars.FOUNDRY_PROJECT_ENDPOINT`
+- Exists specifically to close a real failure mode: `setup_agent.py` reads `tools.json`/`instructions.md` from whatever's on disk relative to itself, with zero awareness of what's actually merged on `origin/main`. Running it from a human's local clone means a stale, un-pulled local checkout can silently deploy old tool definitions while reporting success — which is exactly what happened once, costing a multi-step debugging session before the cause (a local checkout that hadn't been synced since before the fix was merged) was found. A fresh `actions/checkout@v4` on every run is definitionally never stale.
+- The CI/CD identity already holds Foundry User at the Foundry account scope (granted in `infra/main.bicepparam`), so no new RBAC was needed for this workflow.
+- `setup_agent.py` authenticates via `DefaultAzureCredential()`, which falls back to `AzureCliCredential` — the same session `azure/login@v2`'s OIDC exchange establishes, so no separate credential wiring is needed here either.
 
 ### `deploy-event-grids.yml`
 
@@ -104,15 +114,16 @@ CI/CD automation is defined in `.github/workflows/`. There are **nine** workflow
 
 ## OIDC and GitHub configuration
 
-All Azure-authenticating workflows (`bicep-lint.yml`, `deploy-azure-resources.yml`, `deploy-event-grids.yml`, `deploy-function-app-apps.yml`, `deploy-web-frontend.yml`) read from the same **repository variables**:
+All Azure-authenticating workflows (`bicep-lint.yml`, `deploy-agent.yml`, `deploy-azure-resources.yml`, `deploy-event-grids.yml`, `deploy-function-app-apps.yml`, `deploy-web-frontend.yml`) read from the same **repository variables**:
 
 - `AZURE_CLIENT_ID`
 - `AZURE_TENANT_ID`
 - `AZURE_SUBSCRIPTION_ID`
-- `DEPLOYMENT_LOCATION` — used by infrastructure deployment; genuinely can't be auto-published the way the three below can, since it's needed *before* the deployment starts, not produced by it
+- `DEPLOYMENT_LOCATION` — used by infrastructure deployment; genuinely can't be auto-published the way the four below can, since it's needed *before* the deployment starts, not produced by it
 - `FUNCTION_APP_NAME` — used by function-app deployment, Event Grid wiring
 - `DATA_STORAGE_ACCOUNT_NAME` — used by Event Grid wiring
 - `STATIC_WEB_APP_NAME` — used by the web frontend deployment
+- `FOUNDRY_PROJECT_ENDPOINT` — used by agent deployment
 
 None of these values are sensitive under OIDC — the actual trust boundary is the federated credential's `subject` claim, not the secrecy of a client ID, tenant ID, or subscription ID.
 

@@ -48,6 +48,7 @@ module sr 'modules/supporting_resources.bicep' = {
 module fr 'modules/foundry_resources.bicep' = {
   name: 'deploy-foundry-resources'
   params: {
+    applicationInsightsResourceId: sr.outputs.applicationInsights.resourceId
     foundryAccount: foundryAccount
     functionAppUserAssignedIdentityPrincipalId: sr.outputs.userAssignedIdentity.principalId
   }

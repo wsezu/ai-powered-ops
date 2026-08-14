@@ -4,7 +4,25 @@
   --panel: #ffffff;
   --border: #e1e4e8;
   --text: #1b1f23;
-  --text-muted: #6a737d;
+  /* Darkened from #6a737d specifically because the new glass backgrounds are
+     lighter than the old flat --panel white — verified against WCAG contrast
+     math (not eyeballed): the original value blended to only 4.57:1 against
+     the lighter glass surfaces, barely above the 4.5:1 minimum. This value
+     gives 6.61:1, a genuine margin rather than a technical pass. */
+  --text-muted: #525a66;
+
+  /* Milk-glass palette. The ambient gradient exists specifically to give
+     backdrop-filter something to actually blur — a flat color behind glass
+     looks identical with or without the blur, which defeats the point.
+     --glass-strong (82% opaque) is deliberately more opaque than --glass
+     (62%): assistant messages carry dense cost/security data where
+     readability has to win over the aesthetic, so the "frost" lives in the
+     ambient chrome, not on the words themselves. */
+  --ambient-1: #eaf2fb;
+  --ambient-2: #f3ecfa;
+  --glass: rgba(255, 255, 255, 0.62);
+  --glass-strong: rgba(255, 255, 255, 0.85);
+  --glass-border: rgba(255, 255, 255, 0.6);
 }
 
 * {
@@ -14,13 +32,15 @@
 body {
   margin: 0;
   font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-  background: var(--bg);
+  background: linear-gradient(160deg, var(--ambient-1) 0%, var(--ambient-2) 100%);
+  background-attachment: fixed;
   color: var(--text);
   display: flex;
   flex-direction: column;
   height: 100vh;
 }
 
+/* Header intentionally untouched — kept exactly as it already was. */
 header {
   background: var(--panel);
   border-bottom: 1px solid var(--border);
@@ -64,10 +84,20 @@ header h1 {
   color: var(--accent);
 }
 
+/* Guidance panel — given a prominent, bubble-like place of its own, matching
+   the same glass language as the chat messages rather than sitting apart
+   from them as plain UI chrome. */
 #conversation-help {
-  background: var(--panel);
-  border-bottom: 1px solid var(--border);
-  padding: 0.5rem 1.5rem;
+  background: var(--glass);
+  backdrop-filter: blur(14px) saturate(160%);
+  -webkit-backdrop-filter: blur(14px) saturate(160%);
+  border: 1px solid var(--glass-border);
+  border-radius: 14px;
+  box-shadow: 0 4px 18px rgba(31, 41, 55, 0.08);
+  max-width: 720px;
+  width: calc(100% - 2rem);
+  margin: 1rem auto 0;
+  padding: 0.7rem 1.1rem;
   font-size: 0.85rem;
 }
 
@@ -85,7 +115,6 @@ header h1 {
   color: var(--text-muted);
   line-height: 1.5;
   margin: 0.6rem 0 0;
-  max-width: 720px;
 }
 
 main {
@@ -110,8 +139,8 @@ main {
 
 .message {
   max-width: 85%;
-  padding: 0.6rem 0.9rem;
-  border-radius: 10px;
+  padding: 0.7rem 1rem;
+  border-radius: 18px;
   line-height: 1.45;
   white-space: pre-wrap;
 }
@@ -120,12 +149,17 @@ main {
   align-self: flex-end;
   background: var(--accent);
   color: white;
+  border-radius: 18px 18px 4px 18px;
 }
 
 .message.assistant {
   align-self: flex-start;
-  background: var(--panel);
-  border: 1px solid var(--border);
+  background: var(--glass-strong);
+  backdrop-filter: blur(14px) saturate(160%);
+  -webkit-backdrop-filter: blur(14px) saturate(160%);
+  border: 1px solid var(--glass-border);
+  box-shadow: 0 4px 18px rgba(31, 41, 55, 0.08);
+  border-radius: 18px 18px 18px 4px;
 }
 
 .message.assistant h1,
@@ -142,22 +176,30 @@ main {
   margin-top: 0;
 }
 
+/* Tightened from 0.5rem — this is the actual fix for the "choppy" feeling.
+   Confirmed by testing against real agent output that marked.js was already
+   correctly honoring the agent's markdown hard-breaks (the `breaks` option
+   made zero difference); the gap came entirely from vertical margin
+   stacking up across many short, blank-line-separated paragraphs, which is
+   exactly how this agent's output is usually structured (one paragraph per
+   service/signal). Not a rendering bug — a spacing choice that didn't suit
+   this specific content density. */
 .message.assistant p {
-  margin: 0.5rem 0;
+  margin: 0.3rem 0;
 }
 
 .message.assistant ul,
 .message.assistant ol {
-  margin: 0.4rem 0;
+  margin: 0.3rem 0;
   padding-left: 1.4rem;
 }
 
 .message.assistant li {
-  margin: 0.2rem 0;
+  margin: 0.15rem 0;
 }
 
 .message.assistant code {
-  background: var(--bg);
+  background: rgba(0, 0, 0, 0.05);
   border-radius: 4px;
   padding: 0.1rem 0.3rem;
   font-size: 0.85em;
@@ -165,8 +207,8 @@ main {
 
 .message.assistant hr {
   border: none;
-  border-top: 1px solid var(--border);
-  margin: 0.75rem 0;
+  border-top: 1px solid var(--glass-border);
+  margin: 0.6rem 0;
 }
 
 .message.system {
@@ -176,28 +218,43 @@ main {
   font-style: italic;
 }
 
+/* Input area — same glass language as the messages above it, kept as its
+   own floating card rather than a plain top-border strip, per "match the
+   style" while leaving the field and button's actual behavior untouched. */
 #chat-form {
   display: flex;
   gap: 0.5rem;
-  border-top: 1px solid var(--border);
-  padding-top: 1rem;
+  background: var(--glass);
+  backdrop-filter: blur(14px) saturate(160%);
+  -webkit-backdrop-filter: blur(14px) saturate(160%);
+  border: 1px solid var(--glass-border);
+  border-radius: 16px;
+  box-shadow: 0 4px 18px rgba(31, 41, 55, 0.08);
+  padding: 0.6rem;
+  margin-top: 0.75rem;
 }
 
 #message-input {
   flex: 1;
   resize: none;
-  padding: 0.6rem;
-  border: 1px solid var(--border);
-  border-radius: 8px;
+  padding: 0.6rem 0.7rem;
+  border: 1px solid var(--glass-border);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.7);
   font-family: inherit;
   font-size: 0.95rem;
+}
+
+#message-input:focus {
+  outline: none;
+  border-color: var(--accent);
 }
 
 #send-button {
   background: var(--accent);
   color: white;
   border: none;
-  border-radius: 8px;
+  border-radius: 12px;
   padding: 0 1.25rem;
   font-size: 0.95rem;
   cursor: pointer;

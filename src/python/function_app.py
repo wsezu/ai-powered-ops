@@ -8,6 +8,7 @@ import time
 from datetime import datetime, timezone
 
 import azure.functions as func
+import openai
 import pandas as pd
 from anomaly_detection import compute_persistence, is_latest_flagged, signal_key
 from azure.ai.projects import AIProjectClient
@@ -529,6 +530,22 @@ def chat_with_agent(req: func.HttpRequest) -> func.HttpResponse:
     return func.HttpResponse(
       json.dumps({"conversation_id": conversation_id, "reply": reply}),
       status_code=200,
+      mimetype="application/json",
+    )
+  except openai.RateLimitError as e:
+    # This has repeatedly turned out to mean "the conversation has grown too
+    # large for the model deployment's capacity," not "briefly too much
+    # traffic" — confirmed by this failing identically on retry attempts
+    # minutes apart, which a genuinely transient rate limit wouldn't do.
+    # Returned as a distinct status so the frontend can point at starting a
+    # new conversation specifically, rather than showing the raw error body.
+    logger.error(f"Rate limit hit while chatting with the agent: {e}")
+    return func.HttpResponse(
+      json.dumps({
+        "status": "rate_limited",
+        "message": "This conversation has grown too large for the model to process. Start a new conversation and try again.",
+      }),
+      status_code=429,
       mimetype="application/json",
     )
   except Exception as e:

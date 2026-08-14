@@ -49,6 +49,21 @@ header h1 {
   text-decoration: none;
 }
 
+#new-conversation-button {
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 0.85rem;
+  padding: 0.3rem 0.6rem;
+}
+
+#new-conversation-button:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
 main {
   flex: 1;
   display: flex;

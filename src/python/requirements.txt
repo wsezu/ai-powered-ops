@@ -4,5 +4,6 @@ azure-functions~=1.24
 azure-identity~=1.25
 azure-mgmt-resourcegraph~=8.0.1
 azure-storage-blob~=12.30
+openai~=2.53.0
 pandas~=3.0
 pyarrow~=25.0

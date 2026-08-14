@@ -18,6 +18,26 @@
     </div>
   </header>
 
+  <details id="conversation-help">
+    <summary>Why might a conversation fail, and what helps?</summary>
+    <p>
+      Every message you send gets resent along with the entire conversation so
+      far — including the agent's own past replies, which tend to be detailed
+      by design. As a conversation grows, so does the size of every
+      subsequent request, and this deployment's model capacity is
+      intentionally kept modest to control cost. Eventually, a long-running
+      conversation can exceed what a single request is allowed to use.
+    </p>
+    <p>
+      <strong>What helps:</strong> start a new conversation (the button
+      above) once you've gotten what you needed, rather than letting one run
+      indefinitely. Asking for something specific — a single figure, one
+      recommendation — usually gets a shorter reply than an open-ended
+      request for a full analysis, which keeps the conversation smaller for
+      longer.
+    </p>
+  </details>
+
   <main>
     <div id="messages" aria-live="polite"></div>
 

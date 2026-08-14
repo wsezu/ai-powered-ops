@@ -3,6 +3,7 @@ const formEl = document.getElementById("chat-form");
 const inputEl = document.getElementById("message-input");
 const sendButtonEl = document.getElementById("send-button");
 const userNameEl = document.getElementById("user-name");
+const newConversationButtonEl = document.getElementById("new-conversation-button");
 
 const CONVERSATION_STORAGE_KEY = "costAdvisorConversationId";
 
@@ -38,6 +39,14 @@ function setConversationId(id) {
   }
 }
 
+function clearConversation() {
+  sessionStorage.removeItem(CONVERSATION_STORAGE_KEY);
+  messagesEl.innerHTML = "";
+  addMessage("system", "Started a new conversation.");
+}
+
+newConversationButtonEl.addEventListener("click", clearConversation);
+
 async function loadUserInfo() {
   try {
     const res = await fetch("/.auth/me");
@@ -67,7 +76,9 @@ async function sendMessage(message) {
   const data = await res.json();
 
   if (!res.ok) {
-    throw new Error(data.message || `Request failed (${res.status})`);
+    const error = new Error(data.message || `Request failed (${res.status})`);
+    error.status = data.status;
+    throw error;
   }
 
   setConversationId(data.conversation_id);
@@ -95,7 +106,14 @@ formEl.addEventListener("submit", async (event) => {
     addMessage("assistant", reply);
   } catch (err) {
     thinkingEl.remove();
-    addMessage("system", `Something went wrong: ${err.message}`);
+    if (err.status === "rate_limited") {
+      // The backend's message is already clean and specific — showing it
+      // directly, rather than wrapping it in "Something went wrong", since
+      // this isn't an unexpected failure, it's a known, explained limit.
+      addMessage("system", err.message);
+    } else {
+      addMessage("system", `Something went wrong: ${err.message}`);
+    }
   } finally {
     inputEl.disabled = false;
     sendButtonEl.disabled = false;

@@ -172,6 +172,18 @@ Output includes the Function App's `resourceId`, consumed by `web_frontend_resou
 
 Deploys AI Foundry via AVM pattern module `avm/ptn/ai-ml/ai-foundry:0.7.0`. Takes the Function App's user-assigned identity `principalId` as a standalone parameter (not bundled into the `foundryAccount` type) so it can be wired as a module output rather than requiring a manually-pasted value — the CI/CD identity's grant still comes through `foundryAccount.aiFoundryConfiguration.roleAssignments` in `main.bicepparam`, since that identity is external to this deployment.
 
+**Also connects the existing Application Insights resource (from `supporting_resources.bicep`) to the Foundry account**, via a `Microsoft.CognitiveServices/accounts/connections` child resource (`category: AppInsights`). Reuses the existing resource rather than provisioning a second one — App Insights holds multiple distinct telemetry streams in separate tables without issue. Both the App Insights resource and the Foundry account are declared `existing` here (even though the account is created moments earlier in this same module) since the AVM pattern module doesn't expose a way to attach this connection as a parameter — an explicit `dependsOn` is required as a result, since `existing` declarations don't create an implicit ordering dependency the way referencing a module output does. The connection string is read directly from the existing resource's own properties and never passed through a module output or `.bicepparam` value.
+
+Server-side agent tracing activates automatically the moment this connection exists — confirmed working via real trace data in Application Insights, including Foundry's own hosting details (compute platform, cluster name) that weren't configured by anything in this repo.
+
+**The connection alone isn't sufficient for the Foundry portal to display traces** — a Foundry *project* has its own distinct managed identity (separate from the account's, and not exposed by the AVM module's own outputs — obtained here via an `existing` reference to the project sub-resource and reading `.identity.principalId` directly). That identity needs `Reader` on the App Insights resource specifically, granted via a `Microsoft.Authorization/roleAssignments` resource scoped to the App Insights resource itself, not this module's default resource-group scope. Without this grant, the Foundry portal shows "Setup incomplete: Assign the Foundry project's managed identity the Reader role on Application Insights to access traces" even though the connection itself shows as successfully "Connected."
+
+### `modules/security_reader_role_assignments.bicep`
+
+Grants `SecurityReaderRoleId` to the Function App's user-assigned identity, individually, across each of the subscriptions listed in `securityReaderSubscriptionIds` (`main.bicepparam`) — needed specifically for `GetSecurityRecommendations`' Resource Graph query (see `docs/agents.md` and `docs/function-app.md`).
+
+**Deliberately four separate subscription-scoped role assignments, not one management-group-scoped assignment**, even though all four subscriptions sit under a single management group (`Familie Zuidinga`) that would make one assignment look simpler. A subscription-scoped deployment (which `main.bicep` is) can only reach *downward* in the scope hierarchy — to subscriptions or resource groups at or below its own scope — not upward to a parent management group. Every documented example of cross-scope Bicep deployment goes downward from wherever the outermost deployment command is anchored; there's no example anywhere of a subscription deploying up to a management group, and the AVM role-assignment module is correspondingly split into separate `mg-scope`, `rg-scope`, and `sub-scope` variants rather than one unified module. This module uses the `sub-scope` variant, once per subscription, in a loop.
+
 ### `modules/web_frontend_resources.bicep`
 
 Deploys:
@@ -224,6 +236,8 @@ Notable conventions:
   - `FoundryUserRoleId`
   - `KeyVaultSecretsOfficerRoleId`
   - `KeyVaultSecretsUserRoleId`
+  - `ReaderRoleId`
+  - `SecurityReaderRoleId`
   - `StorageBlobDataOwner`
   - `StorageBlobDataContributor`
   - `StorageBlobDataReader`

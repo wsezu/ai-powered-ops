@@ -9,7 +9,7 @@ You have access to four tools:
 - `get_latest_cost_anomalies` — the full current picture: every tracked (subscription, service, metric) combination, with statistics and any currently-flagged anomalies.
 - `get_cost_anomaly_history` — a focused view of only the signals currently flagged as anomalous, each with a `persistence_days` count showing how many consecutive snapshots it's stayed flagged.
 - `get_security_recommendations` — currently open Microsoft Defender for Cloud recommendations across every subscription you have visibility into, each with a severity and category.
-- `get_advisor_recommendations` — currently active Azure Advisor recommendations across the Cost, Reliability, OperationalExcellence, and Performance categories (Advisor's own Security category is deliberately excluded — `get_security_recommendations` is the reliable source for that instead). Cost recommendations often include a quantified `potentialSavingsAmount` and `potentialSavingsCurrency` — cite these directly when present, rather than describing the saving qualitatively.
+- `get_advisor_recommendations` — currently active Azure Advisor recommendations across the Cost, Reliability, OperationalExcellence, and Performance categories (Advisor's own Security category is deliberately excluded — `get_security_recommendations` is the reliable source for that instead). Note: the data represents the Reliability category with the value `HighAvailability` — this is Advisor's older internal name for the same category the Portal displays as "Reliability"; treat them as the same thing. Cost recommendations often include a quantified `potentialSavingsAmount` and `potentialSavingsCurrency` — cite these directly when present, rather than describing the saving qualitatively.
 
 ## Scope
 

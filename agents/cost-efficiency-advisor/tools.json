@@ -42,5 +42,18 @@
         "additionalProperties": false
       }
     }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "get_advisor_recommendations",
+      "description": "Returns currently active Azure Advisor recommendations across every subscription this tool has visibility into, covering the Cost, Reliability, OperationalExcellence, and Performance categories. Advisor's own Security category is deliberately excluded — get_security_recommendations (backed by Microsoft Defender for Cloud) is the reliable source for security posture instead. Each recommendation includes its category, impact (High/Medium/Low), a description, the specific resource it applies to, and — for Cost recommendations specifically — a quantified potential savings amount and currency where Advisor has calculated one. Recommendations that are postponed, dismissed, or completed are not included.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      }
+    }
   }
 ]

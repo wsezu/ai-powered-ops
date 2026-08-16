@@ -1,6 +1,7 @@
 targetScope = 'subscription'
 
 import * as type from 'helpers/types.bicep'
+import * as variable from 'helpers/variables.bicep'
 
 param applicationInsights type.applicationInsights
 param foundryAccount type.foundryAccount
@@ -9,7 +10,7 @@ param keyVault type.keyVault
 param logAnalyticsWorkspace type.logAnalyticsWorkspace
 param networkSecurityGroup type.networkSecurityGroup
 param resourceGroups type.resourceGroup[]
-param securityReaderSubscriptionIds string[]
+param familieZuidingaSubscriptionIds string[]
 param serverFarm type.serverFarm
 param staticWebApp type.staticWebApp
 param storageAccounts type.storageAccount[]
@@ -81,11 +82,21 @@ module wfr 'modules/web_frontend_resources.bicep' = {
   scope: az.resourceGroup(resourceGroups[0].name)
 }
 
-module srra 'modules/security_reader_role_assignments.bicep' = {
+module srra 'modules/multi_subscription_role_assignments.bicep' = {
   name: 'deploy-security-reader-role-assignments'
   params: {
     principalId: sr.outputs.userAssignedIdentity.principalId
-    subscriptionIds: securityReaderSubscriptionIds
+    roleDefinitionId: variable.roleDefinitionId.SecurityReaderRoleId
+    subscriptionIds: familieZuidingaSubscriptionIds
+  }
+}
+
+module arra 'modules/multi_subscription_role_assignments.bicep' = {
+  name: 'deploy-advisor-reader-role-assignments'
+  params: {
+    principalId: sr.outputs.userAssignedIdentity.principalId
+    roleDefinitionId: variable.roleDefinitionId.ReaderRoleId
+    subscriptionIds: familieZuidingaSubscriptionIds
   }
 }
 

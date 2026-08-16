@@ -349,6 +349,44 @@ def _get_security_recommendations_data() -> dict:
     "recommendations": recommendations,
   }
 
+def _get_advisor_recommendations_data() -> dict:
+  # category != 'Security' is deliberate, not an oversight: Advisor's own
+  # docs state that full state management isn't supported for its Security
+  # category, and a "Completed" status there "may not reflect the actual
+  # status and should not be relied upon" — Defender for Cloud (via
+  # get_security_recommendations) is the reliable source for that instead.
+  # Including Advisor's Security category here would both duplicate that
+  # tool and risk surfacing recommendations whose resolved-status Microsoft
+  # itself says not to trust.
+  query = """
+    AdvisorResources
+    | where type == 'microsoft.advisor/recommendations'
+    | where properties.recommendationStatus == 'Active'
+    | where properties.category != 'Security'
+    | project
+        subscriptionId,
+        category = tostring(properties.category),
+        impact = tostring(properties.impact),
+        recommendationName = tostring(properties.shortDescription.solution),
+        resourceId = tostring(properties.resourceMetadata.resourceId),
+        potentialSavingsAmount = properties.extendedProperties.savingsAmount,
+        potentialSavingsCurrency = tostring(properties.extendedProperties.savingsCurrency)
+  """.strip()
+
+  try:
+    response = _get_resource_graph_client().resources(QueryRequest(query=query))
+  except Exception as e:
+    logger.error(f"Resource Graph query for Advisor recommendations failed: {e}")
+    return {"status": "error", "message": "Could not retrieve Advisor recommendations."}
+
+  recommendations = response.data or []
+
+  return {
+    "status": "ok",
+    "recommendation_count": len(recommendations),
+    "recommendations": recommendations,
+  }
+
 def _execute_tool(name: str, arguments: dict) -> dict:
   if name == "get_latest_cost_anomalies":
     return _get_latest_cost_anomalies_data()
@@ -356,6 +394,8 @@ def _execute_tool(name: str, arguments: dict) -> dict:
     return _get_cost_anomaly_history_data(arguments.get("lookback_days"))
   if name == "get_security_recommendations":
     return _get_security_recommendations_data()
+  if name == "get_advisor_recommendations":
+    return _get_advisor_recommendations_data()
   return {"status": "error", "message": f"Unknown tool: {name}"}
 
 def _run_agent_turn(openai_client, conversation_id: str) -> str:
@@ -451,6 +491,24 @@ def get_security_recommendations(req: func.HttpRequest) -> func.HttpResponse:
 
   except Exception as e:
     logger.error(f"The following error occured while fetching security recommendations: {e}")
+    return func.HttpResponse(
+      json.dumps({"status": "error", "message": str(e)}),
+      status_code=500,
+      mimetype="application/json",
+    )
+
+@app.function_name(name="GetAdvisorRecommendations")
+@app.route(route="GetAdvisorRecommendations", methods=["GET"], auth_level=func.AuthLevel.FUNCTION)
+def get_advisor_recommendations(req: func.HttpRequest) -> func.HttpResponse:
+  logger.info("GetAdvisorRecommendations trigger received.")
+
+  try:
+    data = _get_advisor_recommendations_data()
+    status_code = 500 if data.get("status") == "error" else 200
+    return func.HttpResponse(json.dumps(data), status_code=status_code, mimetype="application/json")
+
+  except Exception as e:
+    logger.error(f"The following error occured while fetching Advisor recommendations: {e}")
     return func.HttpResponse(
       json.dumps({"status": "error", "message": str(e)}),
       status_code=500,

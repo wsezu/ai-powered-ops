@@ -130,7 +130,7 @@ param resourceGroups = [
   }
 ]
 
-param securityReaderSubscriptionIds = [
+param familieZuidingaSubscriptionIds = [
   'a525b25c-14fc-42cb-a55f-9dedea6bffaa' // fz-lz-online-aiops-prd-001
   '63b1a2c9-8249-4e7a-9bc1-994aee9ffd88' // fz-plat-net-shared-prd-001
   '1d5d84c6-dd29-4db6-a016-2becc7d0b8d2' // fz-plat-id-shared-prd-001

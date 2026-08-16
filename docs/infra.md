@@ -178,11 +178,18 @@ Server-side agent tracing activates automatically the moment this connection exi
 
 **The connection alone isn't sufficient for the Foundry portal to display traces** — a Foundry *project* has its own distinct managed identity (separate from the account's, and not exposed by the AVM module's own outputs — obtained here via an `existing` reference to the project sub-resource and reading `.identity.principalId` directly). That identity needs `Reader` on the App Insights resource specifically, granted via a `Microsoft.Authorization/roleAssignments` resource scoped to the App Insights resource itself, not this module's default resource-group scope. Without this grant, the Foundry portal shows "Setup incomplete: Assign the Foundry project's managed identity the Reader role on Application Insights to access traces" even though the connection itself shows as successfully "Connected."
 
-### `modules/security_reader_role_assignments.bicep`
+### `modules/multi_subscription_role_assignments.bicep`
 
-Grants `SecurityReaderRoleId` to the Function App's user-assigned identity, individually, across each of the subscriptions listed in `securityReaderSubscriptionIds` (`main.bicepparam`) — needed specifically for `GetSecurityRecommendations`' Resource Graph query (see `docs/agents.md` and `docs/function-app.md`).
+Grants a single role, individually, across each subscription in a list — a generalized, reusable module rather than a role-specific one. `main.bicep` invokes it twice, once per role, both passing the same `familieZuidingaSubscriptionIds` (`main.bicepparam`):
 
-**Deliberately four separate subscription-scoped role assignments, not one management-group-scoped assignment**, even though all four subscriptions sit under a single management group (`Familie Zuidinga`) that would make one assignment look simpler. A subscription-scoped deployment (which `main.bicep` is) can only reach *downward* in the scope hierarchy — to subscriptions or resource groups at or below its own scope — not upward to a parent management group. Every documented example of cross-scope Bicep deployment goes downward from wherever the outermost deployment command is anchored; there's no example anywhere of a subscription deploying up to a management group, and the AVM role-assignment module is correspondingly split into separate `mg-scope`, `rg-scope`, and `sub-scope` variants rather than one unified module. This module uses the `sub-scope` variant, once per subscription, in a loop.
+- `SecurityReaderRoleId` — needed for `GetSecurityRecommendations`'s Resource Graph query.
+- `ReaderRoleId` — needed for `GetAdvisorRecommendations`'s Resource Graph query. Advisor recommendations specifically require access to the resource each one is about, not just a subscription-wide security-posture role, per Advisor's own permissions documentation.
+
+(See `docs/agents.md` and `docs/function-app.md` for what each tool actually does with this access.)
+
+Originally written as a security-specific module (`security_reader_role_assignments.bicep`) and generalized when the Advisor grant needed the identical pattern with a different role — rather than duplicating a near-copy of the same module, `roleDefinitionId` became a parameter instead of a hardcoded constant.
+
+**Deliberately four separate subscription-scoped role assignments per role, not one management-group-scoped assignment**, even though all four subscriptions sit under a single management group (`Familie Zuidinga`) that would make one assignment look simpler. A subscription-scoped deployment (which `main.bicep` is) can only reach *downward* in the scope hierarchy — to subscriptions or resource groups at or below its own scope — not upward to a parent management group. Every documented example of cross-scope Bicep deployment goes downward from wherever the outermost deployment command is anchored; there's no example anywhere of a subscription deploying up to a management group, and the AVM role-assignment module is correspondingly split into separate `mg-scope`, `rg-scope`, and `sub-scope` variants rather than one unified module. This module uses the `sub-scope` variant, once per subscription per role, in a loop.
 
 ### `modules/web_frontend_resources.bicep`
 

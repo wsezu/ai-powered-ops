@@ -358,10 +358,27 @@ def _get_advisor_recommendations_data() -> dict:
   # Including Advisor's Security category here would both duplicate that
   # tool and risk surfacing recommendations whose resolved-status Microsoft
   # itself says not to trust.
+  #
+  # Two portal-label-vs-raw-value mismatches confirmed by direct inspection
+  # of real Resource Graph data, not assumed from documentation samples
+  # (which were themselves inconsistent about the table name's casing):
+  #   - The table is `advisorresources`, lowercase — `AdvisorResources`
+  #     (the casing used in most Microsoft sample queries) throws a
+  #     design-time "table doesn't exist" error against the real API.
+  #   - The Portal's "Active" status label does not appear anywhere in the
+  #     raw data. The only two values actually observed are `New` (an
+  #     outstanding recommendation) and `Completed` — confirmed by
+  #     inspecting every row of a real export, not a single sample.
+  # Separately (not filtered here, but worth knowing when reading results):
+  # the Portal's "Reliability" category label is stored as `HighAvailability`
+  # in the raw data, confirmed against Advisor's own REST API configuration
+  # schema, which lists the category enum directly. Cost, Performance,
+  # Security, and OperationalExcellence are unchanged from their labels —
+  # only Reliability differs.
   query = """
-    AdvisorResources
+    advisorresources
     | where type == 'microsoft.advisor/recommendations'
-    | where properties.recommendationStatus == 'Active'
+    | where properties.recommendationStatus == 'New'
     | where properties.category != 'Security'
     | project
         subscriptionId,

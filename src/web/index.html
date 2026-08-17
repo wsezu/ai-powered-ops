@@ -40,8 +40,12 @@
       indefinitely. Asking for something specific — a single figure, one
       recommendation — usually gets a shorter, faster reply than an
       open-ended request for a full analysis, which helps with both failure
-      modes at once. If a response times out, simply asking again often
-      works.
+      modes at once. If a response times out, simply asking again reliably
+      works — confirmed across repeated real tests, not just a guess. The
+      first time a particular question is asked, none of it has been
+      processed by the model before, so it takes longer; asking again sends
+      nearly the same request, which the model now processes faster because
+      most of it is already primed from the failed attempt.
     </p>
   </details>
 

@@ -2,7 +2,7 @@
 
 AI powered **FinOps + SecOps architecture advisor** on Azure, combining infrastructure-as-code, a Python anomaly-detection Function App, a Microsoft Foundry agent, and a web chat interface with real Entra ID login.
 
-The core advisory loop — detect anomalies, reason about them with an agent, chat with it through a browser — is complete and working end to end. Expansion work (Azure Advisor integration, Defender for Cloud, a broader multi-agent setup once there's enough real data to justify it) is ongoing.
+The core advisory loop — detect anomalies, reason about them with an agent, chat with it through a browser — is complete and working end to end, now grounded in real data from Microsoft Defender for Cloud and Azure Advisor as well as the platform's own cost signals. A broader multi-agent setup remains a deliberate non-goal until there's genuine tool-count pressure or conflicting priorities to justify it, not a default next step.
 
 ## What this repository is
 
@@ -22,8 +22,8 @@ From `infra/`, the platform deploys:
 - resource group(s)
 - virtual network + network security group
 - two storage accounts (data + function package/runtime)
-- Log Analytics + Application Insights
-- user-assigned managed identity
+- Log Analytics + Application Insights (connected to the Foundry project for agent tracing)
+- user-assigned managed identity, with Security Reader and Reader roles across every subscription in scope — needed for the agent's Defender for Cloud and Azure Advisor tools respectively
 - Linux Function App and App Service plan (Flex Consumption)
 - Azure AI Foundry account + model deployments
 - Key Vault (holding the web frontend's Entra ID client secret)
@@ -32,10 +32,10 @@ From `infra/`, the platform deploys:
 From `src/python/`, the Function App provides:
 
 - Event Grid-driven normalization/anomaly analysis pipeline
-- HTTP endpoints to read latest anomaly signals, anomaly persistence history, and storage health
+- HTTP endpoints to read latest anomaly signals, anomaly persistence history, storage health, currently open Defender for Cloud recommendations, and currently active Azure Advisor recommendations
 - A chat endpoint (`ChatWithAgent`) that runs the actual conversation loop against the Foundry agent
 
-From `agents/`, a Foundry prompt agent (`cost-efficiency-advisor`) reasons about cost trade-offs against availability, performance, and security — advisory only, grounded strictly in what the tool data actually shows.
+From `agents/`, a Foundry prompt agent (`cost-efficiency-advisor`) reasons about cost trade-offs against availability, performance, and security — grounding each dimension in real data (Defender for Cloud for security, Azure Advisor for availability and performance) rather than general assumption, and advisory only, never claiming to have changed anything.
 
 From `src/web/`, a chat interface — no framework, no build step — that talks to the Function App through the Static Web App's linked backend, behind Entra ID login.
 
@@ -48,7 +48,7 @@ From `src/web/`, a chat interface — no framework, no build step — that talks
 | `infra/` | Subscription-scoped Bicep templates and modules |
 | `src/python/` | Azure Functions Python app (anomaly detection, HTTP endpoints, chat endpoint) |
 | `src/web/` | Static chat frontend, deployed to the Static Web App |
-| `.github/workflows/` | CI/CD, infra/function/frontend deploy, lint/security/secret scans |
+| `.github/workflows/` | CI/CD, infra/function/frontend/agent deploy, lint/security/secret scans |
 | `docs/` | Detailed documentation for bootstrap, infrastructure, workflows, function app, agents, and the web frontend |
 
 ## How it works
@@ -58,7 +58,8 @@ From `src/web/`, a chat interface — no framework, no build step — that talks
 3. Function App code is deployed from `main` when `src/python/**` changes.
 4. Event Grid wiring deploys after the Function App code exists (its destination references a specific function by name).
 5. The web frontend deploys from `main` when `src/web/**` changes.
-6. Incoming FOCUS exports are processed and anomaly outputs are stored, served via HTTP functions, and reasoned about by the Foundry agent when someone chats with it through the web interface.
+6. The agent's definition (instructions and tools) deploys from `main` when `agents/cost-efficiency-advisor/**` changes.
+7. Incoming FOCUS exports are processed and anomaly outputs are stored, served via HTTP functions, and reasoned about — alongside real security and Advisor data — by the Foundry agent when someone chats with it through the web interface.
 
 ## Progress
 
@@ -66,7 +67,8 @@ From `src/web/`, a chat interface — no framework, no build step — that talks
 2. Deploy infra — done
 3. Implement agent — done
 4. Implement chat interface — done
-5. Expand (Azure Advisor, Defender for Cloud, multi-agent) — planned
+5. Ground the agent in real security and Advisor data (Defender for Cloud, Azure Advisor) — done
+6. Multi-agent setup — deliberately not planned unless genuine tool-count pressure or conflicting priorities emerge to justify it
 
 ## Documentation
 

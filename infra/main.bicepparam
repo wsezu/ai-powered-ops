@@ -84,7 +84,16 @@ param foundryAccount = {
       }
       name: 'gpt-5.1'
       sku: {
-        capacity: 10
+        // Raised from the original 10 to 30 as a first empirical test step,
+        // not a calculated target — no reliable TPM-per-capacity-unit figure
+        // exists for this specific model/region/subscription combination
+        // (Microsoft's own docs and community threads confirm this varies
+        // significantly and isn't a fixed, look-up-able constant). Testing
+        // against the exact three-question sequence that reliably failed at
+        // capacity 10 is the actual verification step, not this number
+        // alone. Confirmed separately that GlobalStandard bills purely on
+        // tokens consumed — raising this ceiling has no cost by itself.
+        capacity: 30
         name: 'GlobalStandard'
       }
       versionUpgradeOption: 'OnceNewDefaultVersionAvailable'

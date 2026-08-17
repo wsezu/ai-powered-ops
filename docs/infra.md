@@ -93,7 +93,7 @@ The web frontend module consumes the Function App's resource ID as its linked ba
 
 The deployed Foundry account currently includes two model deployments:
 
-- `gpt-5.1` (`GlobalStandard`, capacity 10)
+- `gpt-5.1` (`GlobalStandard`, capacity 30 — raised from the original 10 after confirming `GlobalStandard` bills purely on tokens consumed, not on the capacity number itself; see `docs/web-frontend.md` for the rate-limit investigation that motivated this and the separate, unrelated platform timeout it subsequently exposed)
 - `gpt-5-mini` (`GlobalStandard`, capacity 20)
 
 ### Storage account intent

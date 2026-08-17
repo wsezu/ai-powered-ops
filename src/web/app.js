@@ -73,7 +73,24 @@ async function sendMessage(message) {
     body: JSON.stringify(body),
   });
 
-  const data = await res.json();
+  const rawBody = await res.text();
+  let data;
+  try {
+    data = JSON.parse(rawBody);
+  } catch {
+    // Every response our own code returns is valid JSON, even on failure —
+    // so a body that isn't JSON at all didn't come from our own error
+    // handling. This is Static Web Apps' linked-backend proxy giving up
+    // after its own fixed ~45-second timeout on a slow-to-generate
+    // response, unrelated to conversation length or model capacity. The
+    // model may well have finished generating a real answer moments later,
+    // into a connection nobody was listening to anymore.
+    const error = new Error(
+      "This response is taking longer than the platform allows. The answer may still be finishing on the server — try asking again, or ask a more narrowly scoped question."
+    );
+    error.status = "proxy_timeout";
+    throw error;
+  }
 
   if (!res.ok) {
     const error = new Error(data.message || `Request failed (${res.status})`);
@@ -106,10 +123,11 @@ formEl.addEventListener("submit", async (event) => {
     addMessage("assistant", reply);
   } catch (err) {
     thinkingEl.remove();
-    if (err.status === "rate_limited") {
-      // The backend's message is already clean and specific — showing it
-      // directly, rather than wrapping it in "Something went wrong", since
-      // this isn't an unexpected failure, it's a known, explained limit.
+    if (err.status === "rate_limited" || err.status === "proxy_timeout") {
+      // Both are known, explained limits with a clean, specific message
+      // already — show it directly rather than wrapping it in "Something
+      // went wrong", which implies an unexpected failure neither of these
+      // actually is.
       addMessage("system", err.message);
     } else {
       addMessage("system", `Something went wrong: ${err.message}`);

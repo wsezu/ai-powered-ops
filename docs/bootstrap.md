@@ -54,6 +54,8 @@ Deliberately *not* set here: `DEPLOYMENT_LOCATION`, `FUNCTION_APP_NAME`, `DATA_S
 ./bootstrap/bootstrap.sh --org <org> --repo <repo> --subscription <subscription-id> --location <location>
 ```
 
+**If you've forked this repo, or used GitHub's "Use this template" feature, rather than starting from nothing**: add `--skip-repo-creation` (bash) or `-SkipRepoCreation` (PowerShell). Without it, this script tries to create a brand-new, empty GitHub repository — which is correct for the very first setup of a new project, but wrong for anyone who already has a populated copy of this repo and just needs the Azure identity and OIDC federation set up for it. With the flag, the script verifies the repository you named actually exists and is accessible, then skips straight to the Azure identity steps.
+
 ### OIDC subjects used
 
 - `repo:<org>@<org-id>/<repo>@<repo-id>:ref:refs/heads/main`
@@ -117,6 +119,7 @@ Deleting the resource group removes the Static Web App and Key Vault along with 
 - Missing CLI dependency (`gh`, `az`, `jq`)
 - Insufficient GitHub/Azure permissions
 - Repository already exists
+- `--skip-repo-creation`/`-SkipRepoCreation` used but the named repository doesn't exist or isn't accessible — the script checks for this explicitly and fails with a clear message before attempting anything else; double-check the org/repo name, or omit the flag if you actually need the repo created
 - OIDC mismatch (missing/incorrect federated credential subject)
 - Workflow failures due to missing repo variables (`vars.AZURE_*`)
 - `setup_swa_auth.sh` failing with a CRLF-related shebang error (`/usr/bin/env: 'bash\r': No such file or directory`) on Windows — this means `.gitattributes` either hasn't been merged yet or your local checkout hasn't been renormalized against it. Fix: ensure `.gitattributes` is present on `main`, then run `git add --renormalize .` and commit.

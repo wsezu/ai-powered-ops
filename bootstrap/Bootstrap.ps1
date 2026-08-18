@@ -10,7 +10,9 @@ param(
     [string]$SubscriptionId,
 
     [Parameter(Mandatory)]
-    [string]$Location
+    [string]$Location,
+
+    [switch]$SkipRepoCreation
 )
 
 $ErrorActionPreference = 'Stop'
@@ -25,8 +27,16 @@ foreach ($cmd in 'gh', 'az') {
 $identityName = "id-$Repo-prd-$Location-001"
 $resourceGroup = "rg-$Repo-prd-$Location-001"
 
-Write-Output "Creating GitHub repository..."
-gh repo create "$Org/$Repo" --add-readme --gitignore VisualStudio --license gpl-3.0 --public
+if ($SkipRepoCreation) {
+    Write-Output "Skipping GitHub repository creation — verifying '$Org/$Repo' exists and is accessible..."
+    gh repo view "$Org/$Repo" | Out-Null
+    if ($LASTEXITCODE -ne 0) {
+        throw "Repository '$Org/$Repo' not found or not accessible. Check the name, or omit -SkipRepoCreation to create it."
+    }
+} else {
+    Write-Output "Creating GitHub repository..."
+    gh repo create "$Org/$Repo" --add-readme --gitignore VisualStudio --license gpl-3.0 --public
+}
 
 Write-Output "Getting OIDC subject..."
 $branch_subject = gh api "repos/$Org/$Repo" --jq '"repo:\(.owner.login)@\(.owner.id)/\(.name)@\(.id):ref:refs/heads/main"'
